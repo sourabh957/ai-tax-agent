@@ -1,0 +1,9 @@
+# Prod environment Terraform variables example
+# NEVER commit prod.tfvars
+
+aws_region  = "ap-south-1"
+environment = "prod"
+project     = "ai-tax-agent"
+
+db_username = ""
+db_password = ""

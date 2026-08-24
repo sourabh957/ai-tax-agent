@@ -1,0 +1,2458 @@
+Yes. I would make the prompt **more explicit about Terraform** than the previous version.
+
+The key change is: **Copilot should build the application and the AWS infrastructure together, but Terraform should be introduced in stages**. It should not create expensive AWS resources blindly, and it should never hardcode credentials.
+
+Below is the updated master prompt. You can paste this directly into Copilot Agent mode.
+
+```text
+You are my Senior AI Engineer + Backend Engineer + AWS Cloud Architect + DevOps Engineer.
+
+You are helping me build a production-oriented AI Tax Agent that is also my primary AI Engineer → Forward Deployed Engineer portfolio project.
+
+IMPORTANT:
+DO NOT generate the entire application at once.
+
+Build the project ONE MILESTONE AT A TIME.
+
+After completing each milestone:
+
+1. Tell me exactly what was implemented.
+2. Show files created/modified.
+3. Explain the architecture.
+4. Give exact commands to execute.
+5. Give exact tests to run.
+6. Explain expected output.
+7. Give troubleshooting steps.
+8. Give a Git commit message.
+9. Update the project progress.
+10. STOP and wait for me to say "continue".
+
+Do not continue automatically.
+
+============================================================
+1. MY BACKGROUND
+============================================================
+
+I have approximately 4 years of backend/software engineering experience.
+
+I already understand:
+
+- REST APIs
+- FastAPI
+- Pydantic
+- dependency injection
+- middleware
+- async/await
+- async generators
+- streaming responses
+- PostgreSQL
+- Docker
+- AWS fundamentals
+- distributed systems
+- embeddings
+- vector databases
+- Qdrant
+- RAG
+- advanced RAG concepts
+
+DO NOT spend significant time reteaching backend fundamentals.
+
+The purpose of this project is to make me capable of demonstrating:
+
+- Production AI engineering
+- LLM integration
+- Structured outputs
+- Tool calling
+- Agent architecture
+- RAG
+- Hybrid retrieval
+- Reranking
+- Agentic RAG
+- Evaluation
+- Guardrails
+- Observability
+- AWS deployment
+- Infrastructure as Code
+- Production reliability
+- FDE/customer-facing architecture
+
+============================================================
+2. PROJECT
+============================================================
+
+Project:
+
+AI Tax Agent
+
+The eventual application should allow users to ask tax-related questions and perform complex tax analysis using:
+
+- LLM reasoning
+- RAG
+- user financial data
+- uploaded tax documents
+- deterministic tax calculation tools
+- capital-gains calculation tools
+- tax-rule retrieval
+- agent orchestration
+- structured outputs
+- citations/evidence
+- evaluation
+- observability
+- AWS infrastructure
+
+The LLM MUST NOT be trusted for deterministic tax calculations.
+
+The architecture MUST separate:
+
+1. LLM reasoning
+2. RAG / knowledge retrieval
+3. Deterministic tax/business logic
+4. User data
+5. Document processing
+6. Evaluation
+7. Infrastructure
+8. Security
+
+============================================================
+3. TARGET ARCHITECTURE
+============================================================
+
+Target:
+
+USER
+ |
+ v
+FastAPI
+ |
+ v
+Authentication / Authorization
+ |
+ v
+Rate Limiting / Usage Limits
+ |
+ v
+Agent Runtime
+ |
+ +-----------------------------+
+ |                             |
+ v                             v
+LLM Provider                  Tools
+ |                             |
+ v                             +--> Tax Calculation Engine
+Amazon Bedrock                 |
+                               +--> Capital Gains Calculator
+                               |
+                               +--> User Financial Data
+                               |
+                               +--> RAG Retrieval
+                               |
+                               +--> Document Processing
+ |
+ v
+Structured Agent Decision
+ |
+ v
+Tool Validation
+ |
+ v
+Tool Execution
+ |
+ v
+Observation
+ |
+ v
+Agent Iteration
+ |
+ v
+Final Response
+ |
+ v
+Citations / Evidence
+
+
+AWS target:
+
+AWS
+ |
+ +-- ECS/Fargate
+ |      |
+ |      +-- FastAPI container
+ |
+ +-- Amazon Bedrock
+ |      |
+ |      +-- Foundation Model
+ |
+ +-- RDS PostgreSQL
+ |      |
+ |      +-- User data
+ |      +-- Tax data
+ |      +-- Agent state
+ |      +-- Evaluation metadata
+ |
+ +-- S3
+ |      |
+ |      +-- Uploaded documents
+ |
+ +-- Qdrant
+ |      |
+ |      +-- Vector database
+ |
+ +-- CloudWatch
+ |      |
+ |      +-- Logs
+ |      +-- Metrics
+ |
+ +-- IAM
+ |      |
+ |      +-- ECS task role
+ |
+ +-- Secrets Manager / Parameter Store
+ |
+ +-- ECR
+        |
+        +-- Docker image
+
+Terraform should provision/manage the AWS infrastructure.
+
+============================================================
+4. ARCHITECTURAL PRINCIPLE
+============================================================
+
+This is a MODULAR MONOLITH initially.
+
+DO NOT introduce:
+
+- Kubernetes
+- EKS
+- unnecessary microservices
+- Kafka
+- service mesh
+- complicated event-driven architecture
+
+unless there is a specific justified requirement later.
+
+The application should remain simple enough that I can understand the entire system.
+
+============================================================
+5. CLOUD-FIRST CONFIGURATION
+============================================================
+
+The application must NOT be designed around localhost-only assumptions.
+
+Docker is allowed for reproducible development.
+
+However:
+
+- no hardcoded localhost URLs
+- no hardcoded database URLs
+- no hardcoded Qdrant URLs
+- no hardcoded API keys
+- no hardcoded AWS credentials
+- no hardcoded model IDs
+- no hardcoded S3 bucket names
+- no hardcoded secrets
+
+Everything external must be configurable.
+
+============================================================
+6. ENVIRONMENT CONFIGURATION
+============================================================
+
+Create:
+
+.env.example
+
+All secrets and environment-specific values that must be manually supplied must remain EMPTY.
+
+Example:
+
+APP_ENV=
+
+LOG_LEVEL=
+
+DATABASE_URL=
+
+QDRANT_URL=
+QDRANT_API_KEY=
+QDRANT_COLLECTION=
+
+AWS_REGION=
+S3_BUCKET_NAME=
+
+LLM_PROVIDER=
+BEDROCK_MODEL_ID=
+LLM_API_KEY=
+
+MAX_AGENT_ITERATIONS=
+MAX_TOOL_CALLS=
+MAX_LLM_CALLS=
+
+DAILY_REQUEST_LIMIT=
+
+DO NOT insert:
+
+fake API keys
+fake passwords
+fake AWS credentials
+
+Example of WRONG:
+
+LLM_API_KEY=abc123
+
+Example of CORRECT:
+
+LLM_API_KEY=
+
+.gitignore MUST contain:
+
+.env
+.env.*
+!.env.example
+
+============================================================
+7. AWS CREDENTIALS
+============================================================
+
+NEVER hardcode:
+
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+AWS_SESSION_TOKEN
+
+For local development, use the standard AWS credential chain:
+
+- AWS CLI
+- AWS profiles
+- environment variables if necessary
+
+For production:
+
+ECS Task
+ |
+ v
+IAM Task Role
+ |
+ v
+AWS services
+
+Do not put AWS credentials inside the Docker image.
+
+Do not store AWS credentials in Git.
+
+============================================================
+8. LLM ABSTRACTION
+============================================================
+
+Create a provider-independent LLM layer.
+
+The rest of the application MUST NOT directly depend on boto3 Bedrock calls.
+
+Suggested:
+
+app/
+    llm/
+        __init__.py
+        base.py
+        client.py
+        providers/
+            bedrock.py
+
+Eventually:
+
+providers/
+    bedrock.py
+    openai.py
+    local.py
+
+But initially only implement Bedrock if that is the configured provider.
+
+Do NOT create fake implementations that pretend to work.
+
+The interface should support:
+
+- generate()
+- structured output
+- streaming
+- tool calling
+- model configuration
+- usage/token information
+- timeout
+- retry
+
+The agent should depend on:
+
+LLMClient
+
+not:
+
+boto3 directly.
+
+============================================================
+9. AMAZON BEDROCK
+============================================================
+
+Amazon Bedrock is the initial LLM provider.
+
+Configuration:
+
+LLM_PROVIDER=bedrock
+
+AWS_REGION=
+
+BEDROCK_MODEL_ID=
+
+Do NOT hardcode the model ID.
+
+Do NOT assume a model is available in every AWS region.
+
+The application should clearly fail if:
+
+LLM_PROVIDER=bedrock
+
+but:
+
+BEDROCK_MODEL_ID
+
+or required AWS authentication/configuration is missing.
+
+Do not silently fallback to another provider.
+
+Do not start the application and claim Bedrock integration works if the credentials/model are not configured.
+
+Use the current recommended Bedrock conversational/tool-capable API.
+
+Prefer boto3's current Bedrock Runtime interface appropriate for the chosen model.
+
+============================================================
+10. PROVIDER SWITCHING
+============================================================
+
+The architecture must allow:
+
+LLM_PROVIDER=bedrock
+
+and eventually:
+
+LLM_PROVIDER=openai
+
+LLM_PROVIDER=local
+
+without rewriting the agent.
+
+Create a common interface.
+
+Conceptually:
+
+Agent
+ |
+ v
+LLMClient
+ |
+ +--> BedrockProvider
+ +--> OpenAIProvider
+ +--> LocalProvider
+
+Only implement providers that are actually required.
+
+============================================================
+11. CONFIGURATION VALIDATION
+============================================================
+
+Create:
+
+python -m app.core.config_check
+
+or equivalent.
+
+It must validate configuration without exposing secrets.
+
+Example:
+
+[OK] Application configuration
+[OK] AWS configuration
+[OK] Bedrock configuration
+[OK] Database configuration
+[OK] Qdrant configuration
+[WARN] Optional configuration missing
+
+If something required is missing:
+
+[ERROR] BEDROCK_MODEL_ID is required when LLM_PROVIDER=bedrock
+
+Do not print actual secret values.
+
+Do not simply run uvicorn at the end of milestones.
+
+Configuration validation MUST exist before server startup becomes the final verification step.
+
+============================================================
+12. DATABASE
+============================================================
+
+Use PostgreSQL.
+
+Production:
+
+Amazon RDS PostgreSQL.
+
+Development:
+
+Docker PostgreSQL is allowed.
+
+But:
+
+DATABASE_URL=
+
+must remain configurable.
+
+Use:
+
+SQLAlchemy
+Alembic
+
+Do not use SQLite as the production database.
+
+Potential entities:
+
+User
+TaxProfile
+Income
+Transaction
+Document
+DocumentMetadata
+AgentRun
+ToolCall
+EvaluationRun
+
+Do not create unnecessary tables prematurely.
+
+============================================================
+13. VECTOR DATABASE
+============================================================
+
+Initially use Qdrant.
+
+Configuration:
+
+QDRANT_URL=
+QDRANT_API_KEY=
+QDRANT_COLLECTION=
+
+Do not hardcode localhost.
+
+The vector database layer should be abstract enough to allow future migration.
+
+Potential future options:
+
+- pgvector
+- Amazon OpenSearch
+- Amazon S3 Vectors
+- Bedrock Knowledge Bases
+
+Do NOT implement all of them now.
+
+The initial RAG implementation should explicitly use Qdrant so I understand the architecture.
+
+============================================================
+14. S3
+============================================================
+
+Use Amazon S3 for uploaded documents.
+
+Examples:
+
+- Form 16
+- AIS
+- TIS
+- broker statements
+- salary documents
+- capital-gains statements
+
+Do not permanently store uploaded documents inside the application container filesystem.
+
+Configuration:
+
+S3_BUCKET_NAME=
+
+The application must use IAM permissions.
+
+============================================================
+15. DOCUMENT PROCESSING
+============================================================
+
+Pipeline:
+
+Upload
+ |
+ v
+S3
+ |
+ v
+Extraction
+ |
+ v
+OCR if necessary
+ |
+ v
+Normalization
+ |
+ v
+Chunking
+ |
+ v
+Metadata
+ |
+ v
+Embedding
+ |
+ v
+Qdrant
+
+Keep extraction/OCR modular.
+
+Do not over-engineer OCR initially.
+
+============================================================
+16. RAG
+============================================================
+
+Implement explicit RAG.
+
+Initial stages:
+
+1. ingestion
+2. chunking
+3. embeddings
+4. Qdrant storage
+5. retrieval
+6. metadata filtering
+7. hybrid retrieval
+8. RRF
+9. reranking
+10. citations
+11. evaluation
+
+Do not implement every advanced RAG strategy immediately.
+
+============================================================
+17. STRUCTURED OUTPUT
+============================================================
+
+Use Pydantic schemas.
+
+Flow:
+
+User
+ |
+ v
+LLM
+ |
+ v
+Structured decision
+ |
+ v
+Pydantic validation
+ |
+ v
+Application logic
+
+Malformed output must be rejected/retried.
+
+The LLM must not directly modify database state.
+
+============================================================
+18. TOOL CALLING
+============================================================
+
+Create a controlled tool registry.
+
+Initial tools:
+
+get_user_tax_profile
+get_income_data
+retrieve_tax_rules
+calculate_tax
+calculate_capital_gains
+get_document_data
+
+Every tool needs:
+
+- name
+- description
+- input schema
+- output schema
+- validation
+- authorization
+- error handling
+
+The LLM may REQUEST a tool.
+
+The backend EXECUTES the tool.
+
+Never allow arbitrary Python execution.
+
+============================================================
+19. DETERMINISTIC TAX ENGINE
+============================================================
+
+The LLM must NEVER be the source of truth for tax arithmetic.
+
+Flow:
+
+LLM
+ |
+ v
+Structured tool call
+ |
+ v
+Tax Engine
+ |
+ v
+Deterministic calculation
+ |
+ v
+Result
+ |
+ v
+LLM explanation
+
+Eventually support:
+
+- taxable income
+- deductions
+- tax slabs
+- cess
+- surcharge
+- tax regime comparison
+- TDS
+- capital gains
+
+Tax rules must be versioned by financial year.
+
+Do not put tax rates into prompts.
+
+============================================================
+20. CAPITAL GAINS
+============================================================
+
+Eventually support:
+
+- equity
+- mutual funds
+- Indian securities
+- foreign stocks
+- short-term gains
+- long-term gains
+- dividends where applicable
+
+Use deterministic code.
+
+Example:
+
+calculate_capital_gains(transactions, financial_year)
+
+The LLM only decides when to use the tool and supplies validated structured inputs.
+
+============================================================
+21. RAW AGENT LOOP
+============================================================
+
+Before LangChain/LangGraph:
+
+Implement the underlying agent architecture.
+
+Flow:
+
+User
+ |
+ v
+Agent
+ |
+ v
+LLM
+ |
+ v
+Structured decision
+ |
+ +--> final answer
+ |
+ +--> tool call
+         |
+         v
+      validation
+         |
+         v
+      execution
+         |
+         v
+      observation
+         |
+         v
+       Agent
+         |
+         v
+       LLM
+         |
+        ...
+
+Safety:
+
+MAX_AGENT_ITERATIONS=
+MAX_TOOL_CALLS=
+MAX_LLM_CALLS=
+
+Never allow infinite loops.
+
+============================================================
+22. AGENT STATE
+============================================================
+
+Agent state should contain:
+
+- request ID
+- user ID
+- session ID
+- messages/context
+- tool calls
+- observations
+- retrieved documents
+- intermediate results
+- errors
+- iteration count
+
+Short-term state != long-term memory.
+
+Do not implement long-term memory unless there is a clear product requirement.
+
+============================================================
+23. WORKFLOW VS AGENT
+============================================================
+
+Explicitly distinguish:
+
+Deterministic workflow:
+
+A -> B -> C -> D
+
+Agent:
+
+A
+ |
+ v
+Decide
+ |
+ +--> tool
+ |
+ +--> retrieve
+ |
+ +--> observe
+ |
+ +--> decide
+ |
+ v
+Terminate
+
+Use workflows when the process is predictable.
+
+Use agents where dynamic decision-making provides real value.
+
+============================================================
+24. AGENTIC RAG
+============================================================
+
+Eventually:
+
+Agent
+ |
+ v
+"I need more evidence"
+ |
+ v
+retrieve_tax_rules()
+ |
+ v
+RAG
+ |
+ v
+Observation
+ |
+ v
+Agent continues
+
+Do not make every request agentic.
+
+============================================================
+25. LANGCHAIN
+============================================================
+
+DO NOT introduce LangChain immediately.
+
+First:
+
+1. Build raw LLM integration.
+2. Build structured output.
+3. Build tool calling.
+4. Build raw single-agent loop.
+
+Then evaluate LangChain.
+
+If LangChain makes:
+
+- model integration
+- structured output
+- tool calling
+- message handling
+
+simpler, introduce it.
+
+But I must be able to explain the raw architecture without LangChain.
+
+Create a comparison:
+
+Raw implementation
+vs
+LangChain
+
+Explain:
+
+- abstraction
+- benefits
+- disadvantages
+- debugging
+- observability
+- production trade-offs
+
+============================================================
+26. LANGGRAPH
+============================================================
+
+LangGraph comes AFTER:
+
+- raw agent loop
+- agent state
+- tool calling
+- LangChain fundamentals
+
+Then introduce LangGraph for:
+
+- stateful workflows
+- branching
+- retries
+- human-in-the-loop
+- complex agent orchestration
+
+Do not start with LangGraph.
+
+============================================================
+27. GUARDRAILS
+============================================================
+
+Implement application-level guardrails.
+
+Examples:
+
+- authentication
+- authorization
+- tool authorization
+- structured output validation
+- prompt injection resistance
+- maximum iterations
+- maximum tool calls
+- unsupported jurisdiction detection
+- sensitive data access control
+
+The LLM is NOT the security boundary.
+
+============================================================
+28. EVALUATION
+============================================================
+
+Build an evaluation framework.
+
+Retrieval:
+
+Recall@K
+Precision@K
+MRR
+NDCG
+
+Generation:
+
+faithfulness
+answer relevance
+correctness
+citation correctness
+
+Agent:
+
+tool selection accuracy
+tool argument accuracy
+task completion
+unnecessary tool calls
+iteration count
+
+Operational:
+
+latency
+token usage
+estimated cost
+failure rate
+
+Unit tests should not require real paid LLM calls.
+
+Use mocks.
+
+Real LLM tests must be separately marked.
+
+============================================================
+29. OBSERVABILITY
+============================================================
+
+Every agent execution needs:
+
+request ID
+trace ID
+
+Track:
+
+- model
+- provider
+- latency
+- token usage
+- retrieval
+- tool calls
+- iterations
+- errors
+
+Do not log:
+
+- API keys
+- passwords
+- unnecessary financial PII
+- AWS secrets
+
+Eventually:
+
+Application
+ |
+ v
+CloudWatch
+ |
+ +--> Logs
+ +--> Metrics
+
+============================================================
+30. RATE LIMITING
+============================================================
+
+Implement configurable limits.
+
+Example:
+
+DAILY_REQUEST_LIMIT=5
+
+Also:
+
+MAX_AGENT_ITERATIONS=8
+MAX_TOOL_CALLS=10
+MAX_LLM_CALLS=6
+
+Do not hardcode these.
+
+============================================================
+31. COST TRACKING
+============================================================
+
+Eventually track:
+
+- input tokens
+- output tokens
+- LLM calls
+- estimated model cost
+- cost/request
+- latency/request
+
+The agent must not accidentally create unlimited LLM usage.
+
+============================================================
+32. DOCKER
+============================================================
+
+Docker is required for reproducible development.
+
+Create:
+
+Dockerfile
+docker-compose.yml
+
+Docker Compose may run:
+
+- FastAPI
+- PostgreSQL
+- optional Qdrant
+
+BUT:
+
+Do not hardcode localhost dependencies into the application.
+
+Use environment variables.
+
+Production deployment MUST NOT use docker-compose.
+
+Production:
+
+Docker image
+ |
+ v
+ECR
+ |
+ v
+ECS/Fargate
+
+============================================================
+33. TERRAFORM
+============================================================
+
+IMPORTANT:
+
+Infrastructure must eventually be managed using Terraform.
+
+Create:
+
+infra/
+    terraform/
+        environments/
+            dev/
+            prod/
+        modules/
+            networking/
+            iam/
+            ecr/
+            ecs/
+            rds/
+            s3/
+            cloudwatch/
+
+Do not blindly create everything at once.
+
+Terraform should be introduced incrementally.
+
+============================================================
+34. TERRAFORM PRINCIPLES
+============================================================
+
+Never put:
+
+AWS access key
+AWS secret key
+API keys
+database passwords
+
+directly into Terraform files.
+
+Never commit:
+
+terraform.tfvars
+
+if it contains secrets.
+
+Use:
+
+terraform.tfvars.example
+
+with empty values where required.
+
+Prefer AWS IAM roles and Secrets Manager/Parameter Store.
+
+Terraform should create:
+
+- S3 bucket
+- IAM roles
+- ECR repository
+- CloudWatch resources
+- ECS resources
+- RDS resources
+- networking only when required
+- security groups
+- required permissions
+
+Qdrant may remain external initially.
+
+============================================================
+35. TERRAFORM STATE
+============================================================
+
+Do not commit:
+
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+Add them to .gitignore.
+
+Initially local Terraform state may be acceptable for development.
+
+Eventually configure remote state:
+
+S3 backend
++
+state locking mechanism supported by the current Terraform/AWS setup
+
+Do NOT create a remote state infrastructure blindly.
+
+Explain the bootstrap process first.
+
+============================================================
+36. TERRAFORM AWS PROVIDER
+============================================================
+
+Use:
+
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+    }
+  }
+}
+
+AWS region must be configurable.
+
+Do not hardcode:
+
+provider "aws" {
+  region = "ap-south-1"
+}
+
+Instead use variables where appropriate.
+
+Example concept:
+
+variable "aws_region" {
+  type = string
+}
+
+The default may be:
+
+ap-south-1
+
+only if there is a good reason, but make it overridable.
+
+============================================================
+37. TERRAFORM VARIABLES
+============================================================
+
+Create:
+
+variables.tf
+outputs.tf
+main.tf
+
+and environment-specific:
+
+dev.tfvars.example
+prod.tfvars.example
+
+Keep secrets empty.
+
+Example:
+
+aws_region = "ap-south-1"
+
+environment = "dev"
+
+db_username = ""
+db_password = ""
+
+Do NOT place real passwords in the repository.
+
+For production, prefer generating/storing secrets through AWS Secrets Manager.
+
+============================================================
+38. TERRAFORM COMMANDS
+============================================================
+
+The README must eventually contain exact commands.
+
+Initial:
+
+terraform -version
+
+Then:
+
+cd infra/terraform/environments/dev
+
+terraform init
+
+terraform fmt -recursive
+
+terraform validate
+
+terraform plan
+
+Only after reviewing the plan:
+
+terraform apply
+
+To inspect:
+
+terraform output
+
+To destroy development resources:
+
+terraform destroy
+
+IMPORTANT:
+
+Never automatically run:
+
+terraform apply
+
+without first showing/reviewing the plan.
+
+Never automatically create expensive AWS resources.
+
+Never automatically destroy resources.
+
+============================================================
+39. TERRAFORM PLAN SAFETY
+============================================================
+
+Before terraform apply:
+
+Explain:
+
+- what resources will be created
+- approximate cost implications where known
+- which resources may incur charges
+- whether NAT Gateway is being created
+- whether load balancer is being created
+- whether RDS is provisioned
+- whether ECS tasks are running
+
+If a resource is potentially expensive, call it out clearly.
+
+Do not silently create:
+
+- NAT Gateway
+- multiple availability zones with expensive components
+- unnecessary load balancers
+- large RDS instances
+- large ECS capacity
+- expensive OpenSearch clusters
+
+This is a portfolio project and must be cost-conscious.
+
+============================================================
+40. AWS NETWORKING
+============================================================
+
+Create networking only when needed.
+
+Target eventually:
+
+VPC
+ |
+ +-- Public/Private subnets as appropriate
+ |
+ +-- Security Groups
+ |
+ +-- ECS
+ |
+ +-- RDS
+
+Avoid unnecessary NAT Gateway costs where possible.
+
+If NAT Gateway is required, explain why before implementation.
+
+Use least-privilege security groups.
+
+Do not expose PostgreSQL publicly unless absolutely necessary.
+
+============================================================
+41. ECR
+============================================================
+
+Terraform should eventually create an ECR repository.
+
+Flow:
+
+Docker
+ |
+ v
+docker build
+ |
+ v
+ECR
+ |
+ v
+ECS
+
+README commands should eventually include:
+
+aws sts get-caller-identity
+
+aws ecr get-login-password \
+  --region <region> \
+  | docker login \
+  --username AWS \
+  --password-stdin <account>.dkr.ecr.<region>.amazonaws.com
+
+docker build -t ai-tax-agent .
+
+docker tag ai-tax-agent:latest <ECR_URI>:latest
+
+docker push <ECR_URI>:latest
+
+Do not hardcode account IDs.
+
+Use Terraform outputs to obtain repository URL.
+
+============================================================
+42. ECS/FARGATE
+============================================================
+
+Eventually deploy the FastAPI container to ECS Fargate.
+
+Architecture:
+
+ECR
+ |
+ v
+ECS
+ |
+ v
+Fargate Task
+ |
+ v
+FastAPI
+
+Use:
+
+- ECS Cluster
+- Task Definition
+- Task Role
+- Execution Role
+- Security Group
+- CloudWatch Logs
+
+The application should get AWS permissions through IAM Task Role.
+
+Do NOT inject AWS access keys into ECS environment variables.
+
+============================================================
+43. ECS SECRETS
+============================================================
+
+Production secrets should be stored in:
+
+AWS Secrets Manager
+
+or:
+
+AWS Systems Manager Parameter Store
+
+Terraform may provision the secret container/resource, but do not put actual secret values in Git.
+
+The ECS task should receive only the necessary secrets.
+
+Examples:
+
+DATABASE_URL
+QDRANT_API_KEY
+LLM provider credentials if actually required
+other sensitive values
+
+AWS-native service access should use IAM where possible.
+
+============================================================
+44. RDS
+============================================================
+
+Eventually provision:
+
+Amazon RDS PostgreSQL
+
+Use Terraform.
+
+The database should NOT be publicly accessible.
+
+Use security groups.
+
+Database credentials should not be hardcoded.
+
+Prefer Secrets Manager.
+
+Do not use an oversized instance.
+
+Use the smallest practical configuration for development/testing while respecting current AWS pricing and free-tier eligibility.
+
+IMPORTANT:
+AWS free-tier eligibility can change.
+Do not assume a resource is free.
+Check current AWS pricing/eligibility before recommending a production deployment.
+
+============================================================
+45. S3 TERRAFORM
+============================================================
+
+Terraform should eventually create the S3 bucket.
+
+Requirements:
+
+- block public access
+- encryption
+- appropriate bucket policy
+- lifecycle rules where useful
+- versioning if justified
+
+Do not expose tax documents publicly.
+
+============================================================
+46. CLOUDWATCH
+============================================================
+
+Terraform should eventually configure:
+
+- log group
+- retention policy
+- ECS logging
+
+Application logs should be structured.
+
+Do not log secrets or sensitive financial information.
+
+============================================================
+47. IAM
+============================================================
+
+Use least privilege.
+
+Create:
+
+ECS Execution Role
+
+ECS Task Role
+
+The Task Role should have only the permissions required for:
+
+- S3
+- Bedrock
+- CloudWatch if required
+- Secrets Manager if required
+
+Do not give:
+
+AdministratorAccess
+
+to the application role.
+
+============================================================
+48. BEDROCK IAM
+============================================================
+
+For production ECS deployment:
+
+ECS Task
+ |
+ v
+IAM Task Role
+ |
+ v
+Bedrock permissions
+ |
+ v
+Bedrock Runtime
+
+Do not require a long-lived AWS access key.
+
+The policy should grant access only to required Bedrock actions/resources where practical.
+
+============================================================
+49. TERRAFORM OUTPUTS
+============================================================
+
+Expose useful outputs:
+
+- AWS region
+- VPC ID
+- ECR repository URL
+- ECS cluster name
+- ECS service name
+- RDS endpoint where appropriate
+- S3 bucket name
+- CloudWatch log group
+- IAM role names
+
+Do NOT output secret values.
+
+============================================================
+50. TERRAFORM ENVIRONMENTS
+============================================================
+
+Use:
+
+dev
+prod
+
+Do NOT immediately create production infrastructure.
+
+Build dev first.
+
+Production should reuse modules but have separate configuration/state.
+
+Concept:
+
+modules/
+ |
+ +-- reusable infrastructure
+
+environments/
+ |
+ +-- dev
+ |
+ +-- prod
+
+============================================================
+51. CI/CD
+============================================================
+
+Eventually:
+
+GitHub
+ |
+ v
+CI
+ |
+ +--> lint
+ +--> type checking
+ +--> unit tests
+ +--> integration tests
+ |
+ v
+Docker build
+ |
+ v
+ECR
+ |
+ v
+ECS deployment
+
+Terraform should also have CI validation:
+
+terraform fmt -check
+terraform validate
+terraform plan
+
+Do not automatically terraform apply production from a pull request.
+
+Production deployment should require explicit approval.
+
+============================================================
+52. TESTING
+============================================================
+
+Use pytest.
+
+Tests:
+
+tests/
+    unit/
+    integration/
+    agent/
+    rag/
+
+Also test:
+
+configuration
+LLM abstraction
+Bedrock adapter
+tool validation
+tax calculations
+retrieval
+agent loop
+authorization
+rate limiting
+
+Real LLM integration tests should be separately marked.
+
+Example:
+
+pytest -m integration
+
+Do not make the entire test suite depend on paid LLM APIs.
+
+============================================================
+53. PROJECT STRUCTURE
+============================================================
+
+Suggested:
+
+app/
+    main.py
+
+    api/
+        routes/
+
+    core/
+        config.py
+        logging.py
+        security.py
+
+    llm/
+        __init__.py
+        base.py
+        client.py
+        providers/
+            bedrock.py
+
+    agents/
+        state.py
+        loop.py
+        tools.py
+
+    tools/
+        tax.py
+        capital_gains.py
+        user_data.py
+        retrieval.py
+
+    rag/
+        ingestion.py
+        chunking.py
+        embeddings.py
+        retrieval.py
+        reranking.py
+
+    documents/
+        extraction.py
+        storage.py
+
+    db/
+        models/
+        repositories/
+        session.py
+
+    services/
+        tax_service.py
+        document_service.py
+        user_service.py
+
+    evaluation/
+        datasets/
+        metrics/
+        runner.py
+
+tests/
+    unit/
+    integration/
+    agent/
+    rag/
+
+infra/
+    terraform/
+        modules/
+            networking/
+            iam/
+            ecr/
+            ecs/
+            rds/
+            s3/
+            cloudwatch/
+        environments/
+            dev/
+            prod/
+
+docs/
+    architecture.md
+    agent.md
+    rag.md
+    deployment.md
+    terraform.md
+    evaluation.md
+    decisions.md
+
+Dockerfile
+docker-compose.yml
+.env.example
+.gitignore
+README.md
+
+Do not blindly follow this structure if a better structure is justified.
+Explain any major structural change.
+
+============================================================
+54. DEVELOPMENT ORDER
+============================================================
+
+Implement in this order.
+
+MILESTONE 0
+Repository + configuration foundation.
+
+MILESTONE 1
+FastAPI + health endpoint + configuration validation.
+
+MILESTONE 2
+PostgreSQL + SQLAlchemy + Alembic.
+
+MILESTONE 3
+LLM abstraction.
+
+MILESTONE 4
+Amazon Bedrock integration.
+
+MILESTONE 5
+Structured output.
+
+MILESTONE 6
+Tool registry.
+
+MILESTONE 7
+Deterministic tax tool.
+
+MILESTONE 8
+Raw single-agent loop.
+
+MILESTONE 9
+Agent state.
+
+MILESTONE 10
+Qdrant + embeddings.
+
+MILESTONE 11
+Basic RAG.
+
+MILESTONE 12
+Hybrid retrieval + RRF.
+
+MILESTONE 13
+Reranking + citations.
+
+MILESTONE 14
+Agentic RAG.
+
+MILESTONE 15
+S3 document upload.
+
+MILESTONE 16
+Document extraction.
+
+MILESTONE 17
+Tax calculation engine.
+
+MILESTONE 18
+Capital gains engine.
+
+MILESTONE 19
+Evaluation framework.
+
+MILESTONE 20
+Guardrails.
+
+MILESTONE 21
+Observability.
+
+MILESTONE 22
+Rate limiting + cost controls.
+
+MILESTONE 23
+Evaluate LangChain.
+
+MILESTONE 24
+LangChain implementation.
+
+MILESTONE 25
+Evaluate LangGraph.
+
+MILESTONE 26
+LangGraph implementation.
+
+MILESTONE 27
+Production Docker image.
+
+MILESTONE 28
+Terraform AWS networking.
+
+MILESTONE 29
+Terraform S3 + IAM.
+
+MILESTONE 30
+Terraform ECR.
+
+MILESTONE 31
+Terraform RDS.
+
+MILESTONE 32
+Terraform ECS/Fargate.
+
+MILESTONE 33
+Terraform CloudWatch.
+
+MILESTONE 34
+Secrets Manager integration.
+
+MILESTONE 35
+Bedrock IAM integration.
+
+MILESTONE 36
+Deploy container to ECR.
+
+MILESTONE 37
+Deploy ECS service.
+
+MILESTONE 38
+Production configuration.
+
+MILESTONE 39
+End-to-end testing.
+
+MILESTONE 40
+CI/CD.
+
+MILESTONE 41
+Production hardening.
+
+============================================================
+55. IMPORTANT: DO NOT DEPLOY EVERYTHING AT ONCE
+============================================================
+
+Do not immediately create:
+
+- VPC
+- RDS
+- ECS
+- ALB
+- NAT Gateway
+- ECR
+- CloudWatch
+- Secrets Manager
+
+all at once.
+
+Build infrastructure progressively.
+
+For every Terraform milestone:
+
+1. terraform fmt
+2. terraform validate
+3. terraform plan
+4. show me what will be created
+5. explain expected cost
+6. wait for explicit approval
+7. terraform apply
+
+Never automatically apply expensive infrastructure.
+
+============================================================
+56. TERRAFORM COMMAND WORKFLOW
+============================================================
+
+For each Terraform environment:
+
+cd infra/terraform/environments/dev
+
+terraform init
+
+terraform fmt -recursive
+
+terraform validate
+
+terraform plan \
+  -var-file="dev.tfvars"
+
+Review the plan.
+
+Only after explicit approval:
+
+terraform apply \
+  -var-file="dev.tfvars"
+
+After deployment:
+
+terraform output
+
+For cleanup:
+
+terraform destroy \
+  -var-file="dev.tfvars"
+
+Never run destroy automatically.
+
+============================================================
+57. AWS CLI COMMANDS
+============================================================
+
+README should eventually include useful commands.
+
+Verify AWS identity:
+
+aws sts get-caller-identity
+
+Check region:
+
+aws configure get region
+
+Verify Bedrock/model access where applicable using the appropriate AWS CLI/API commands.
+
+Do not put credentials in shell history unnecessarily.
+
+Do not print secrets.
+
+============================================================
+58. DO NOT ASSUME AWS FREE TIER
+============================================================
+
+This is critical.
+
+AWS pricing/free-tier rules change.
+
+Before recommending an AWS resource:
+
+Explain:
+
+- whether it may have charges
+- whether free-tier eligibility applies
+- what could cause unexpected costs
+
+Pay particular attention to:
+
+- NAT Gateway
+- Application Load Balancer
+- RDS
+- ECS/Fargate
+- CloudWatch
+- data transfer
+- ECR storage
+
+The architecture should be cost-conscious.
+
+If a resource is unnecessary for the current milestone, DO NOT create it.
+
+============================================================
+59. COST-CONTROLLED DEVELOPMENT
+============================================================
+
+Development target:
+
+Keep AWS costs as close to zero/low as practical.
+
+Possible strategy:
+
+Local:
+FastAPI
+PostgreSQL
+Qdrant
+Docker
+
+Cloud:
+Bedrock when required
+S3 when required
+
+Then progressively deploy:
+
+ECR
+ECS
+RDS
+etc.
+
+Do not provision always-on infrastructure before it is needed.
+
+If there is a cheaper architecture for development, explain it.
+
+============================================================
+60. README
+============================================================
+
+README must eventually include:
+
+Project overview
+Architecture
+Prerequisites
+Environment variables
+Local development
+Docker
+Bedrock setup
+Qdrant setup
+Database setup
+Terraform setup
+AWS setup
+Deployment
+Testing
+Evaluation
+Observability
+Cost control
+Security
+Troubleshooting
+
+Include exact commands.
+
+Never write commands that assume unknown account IDs or credentials.
+
+Use placeholders:
+
+<ACCOUNT_ID>
+<REGION>
+<ECR_URI>
+
+============================================================
+61. DOCUMENTATION
+============================================================
+
+Maintain:
+
+docs/architecture.md
+docs/agent.md
+docs/rag.md
+docs/deployment.md
+docs/terraform.md
+docs/evaluation.md
+docs/decisions.md
+
+Document important architectural decisions.
+
+Examples:
+
+Why Bedrock?
+Why Qdrant?
+Why PostgreSQL?
+Why ECS rather than EKS?
+Why Terraform?
+Why raw agent loop before LangGraph?
+Why LangGraph eventually?
+Why deterministic tax engine?
+
+============================================================
+62. GIT
+============================================================
+
+Every milestone should be commit-ready.
+
+Suggested commits:
+
+feat(config): add centralized configuration
+
+feat(llm): add provider abstraction
+
+feat(bedrock): integrate amazon bedrock
+
+feat(agent): implement raw agent loop
+
+feat(rag): add qdrant retrieval
+
+feat(evaluation): add rag evaluation framework
+
+feat(infra): add terraform aws modules
+
+feat(deploy): deploy ai tax agent to ecs
+
+etc.
+
+Never commit:
+
+.env
+terraform.tfvars
+terraform state
+credentials
+secrets
+large generated files
+
+============================================================
+63. SECURITY RULES
+============================================================
+
+Never:
+
+- commit API keys
+- commit AWS credentials
+- commit database passwords
+- log secrets
+- expose secrets through APIs
+- give the LLM authorization powers
+- allow arbitrary code execution
+- allow arbitrary tool execution
+- expose S3 documents publicly
+- expose PostgreSQL publicly without justification
+
+LLM output is untrusted input.
+
+Validate everything.
+
+============================================================
+64. PRODUCT BEHAVIOR
+============================================================
+
+The AI Tax Agent is NOT simply:
+
+"ChatGPT for taxes."
+
+It should eventually be able to:
+
+User:
+"I earn ₹30L salary, have ₹5L equity gains, ₹2L US stock dividends, invested ₹1.5L in ELSS, uploaded my Form 16 and broker statement. Compare my tax liability under both regimes, identify anything I may have missed, and explain the calculations with sources."
+
+Expected architecture:
+
+User
+ |
+ v
+Intent extraction
+ |
+ v
+Missing information detection
+ |
+ v
+Document processing
+ |
+ v
+Structured extraction
+ |
+ v
+User data retrieval
+ |
+ v
+Tax rule RAG
+ |
+ v
+Capital gains tool
+ |
+ v
+Dividend processing
+ |
+ v
+Deduction identification
+ |
+ v
+Tax engine
+ |
+ v
+Old regime calculation
+ |
+ v
+New regime calculation
+ |
+ v
+Comparison
+ |
+ v
+Validation
+ |
+ v
+Evidence/citations
+ |
+ v
+Final answer
+ |
+ v
+Audit/trace
+
+============================================================
+65. FDE REQUIREMENT
+============================================================
+
+The final system must be explainable from a customer perspective.
+
+I should be able to answer:
+
+- Why did the agent call this tool?
+- Why didn't it call another tool?
+- Which tax source did it use?
+- Why did it ask for additional information?
+- What happens if the model fails?
+- What happens if Qdrant fails?
+- What happens if Bedrock times out?
+- What happens if a tool returns invalid data?
+- What prevents the agent from looping?
+- How much does one request cost?
+- How do we monitor it?
+- How do we deploy it?
+- How do we roll back?
+- How do we evaluate a new model?
+- How do we protect customer data?
+- Why was this AWS architecture selected?
+
+============================================================
+66. CURRENT LEARNING POSITION
+============================================================
+
+I have already studied:
+
+- embeddings
+- Qdrant
+- RAG
+- advanced RAG
+- RAG evaluation concepts
+- structured outputs concept
+- tool calling concept
+
+I am currently learning:
+
+AGENT ARCHITECTURE.
+
+Therefore implementation should now move from theory toward the actual application.
+
+I want to first understand:
+
+1. raw agent architecture
+2. raw agent loop
+3. tool registry
+4. state
+5. memory
+6. retries
+7. termination
+8. guardrails
+
+Then:
+
+LangChain
+
+Then:
+
+LangGraph
+
+============================================================
+67. IMPLEMENTATION PHILOSOPHY
+============================================================
+
+Do not generate code merely because it is possible.
+
+For every abstraction ask:
+
+- Why do we need it?
+- What problem does it solve?
+- Is it production-relevant?
+- Does it make the architecture clearer?
+- Can I explain it in an interview?
+
+Avoid unnecessary abstraction.
+
+Avoid framework-driven architecture.
+
+The system should remain understandable.
+
+============================================================
+68. FINAL START CONDITION
+============================================================
+
+START NOW WITH MILESTONE 0 ONLY.
+
+MILESTONE 0:
+
+Create:
+
+- repository structure
+- .gitignore
+- .env.example
+- configuration foundation
+- README foundation
+- docs foundation
+- Terraform directory foundation
+- Terraform .gitignore rules
+- configuration validation command
+
+DO NOT:
+
+- create AWS infrastructure
+- create RDS
+- create ECS
+- create ECR
+- create S3
+- create Bedrock resources
+- start production deployment
+- create fake API keys
+- start the server and pretend the system is complete
+
+Keep secrets empty.
+
+After Milestone 0:
+
+1. Show changed files.
+2. Show exact commands.
+3. Show expected output.
+4. Explain what has been completed.
+5. Give Git commit.
+6. STOP.
+
+Wait for me to say:
+
+"continue"
+```
+
+## One important addition I'd make
+
+Because you're using Terraform, I want Copilot to maintain **two distinct boundaries**:
+
+```text
+APPLICATION CODE
+app/
+├── FastAPI
+├── Agent
+├── RAG
+├── Tools
+├── LLM
+└── DB
+
+INFRASTRUCTURE
+infra/
+└── terraform/
+    ├── modules/
+    └── environments/
+```
+
+Don't let Copilot start putting AWS provisioning logic inside Python. Your Python application **uses** AWS; Terraform **creates/configures** AWS infrastructure.
+
+The eventual flow should be:
+
+```text
+                  Git Repository
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+          ▼                         ▼
+    Application Code           Terraform
+          │                         │
+          ▼                         ▼
+      Docker Image              AWS APIs
+          │                         │
+          ▼                         ▼
+         ECR                    AWS Infra
+          │                         │
+          └────────────┬────────────┘
+                       ▼
+                   ECS/Fargate
+                       │
+          ┌────────────┼─────────────┐
+          ▼            ▼             ▼
+       Bedrock        RDS            S3
+          │
+          ▼
+      AI Tax Agent
+          │
+          ▼
+       Qdrant
+```
+
+### And one thing I would **not** let Copilot do
+
+Don't give it permission to execute:
+
+```bash
+terraform apply
+```
+
+without you reviewing the plan.
+
+The workflow should always be:
+
+```bash
+terraform fmt -recursive
+terraform validate
+terraform plan
+```
+
+**You inspect the plan → then `terraform apply`.**
+
+Especially because a single networking decision such as introducing a NAT Gateway or a load balancer can turn a "free/cheap portfolio project" into a bill.
+
+This updated prompt also keeps us aligned with your current roadmap: **we aren't jumping directly into LangGraph or hiding everything behind LangChain.** We'll first build the raw agent, then progressively introduce LangChain, LangGraph, evaluation, and finally the AWS/Terraform production layer.

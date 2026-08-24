@@ -1,0 +1,11 @@
+# Dev environment Terraform variables
+# Copy this file to dev.tfvars and fill in values.
+# NEVER commit dev.tfvars — it is in .gitignore.
+
+aws_region  = "ap-south-1"
+environment = "dev"
+project     = "ai-tax-agent"
+
+# Leave credentials empty here; supply via environment or Secrets Manager
+db_username = ""
+db_password = ""
