@@ -1,3 +1,8 @@
-# s3 module
+# S3 Module
 
-> Not yet implemented. Will be added in the corresponding Terraform milestone.
+Creates the S3 bucket for tax documents. AES256 encrypted, public access blocked, versioning configurable.
+
+## Cost
+- Storage ~$0.023/GB/month
+- Versioning OFF in dev
+
