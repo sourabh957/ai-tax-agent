@@ -25,7 +25,7 @@ def test_to_dict_has_all_keys():
     d = calculate_income_tax(500_000).to_dict()
     for key in [
         "financial_year", "regime", "gross_income", "standard_deduction",
-        "other_deductions", "taxable_income", "tax_before_rebate",
+        "deductions", "taxable_income", "tax_before_rebate",
         "rebate_87a", "tax_after_rebate", "surcharge", "cess",
         "total_tax", "effective_rate_pct",
     ]:
