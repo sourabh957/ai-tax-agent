@@ -1,11 +1,21 @@
 # Dev environment Terraform variables
 # Copy this file to dev.tfvars and fill in values.
-# NEVER commit dev.tfvars — it is in .gitignore.
+# NEVER commit dev.tfvars - it is in .gitignore.
 
 aws_region  = "ap-south-1"
 environment = "dev"
 project     = "ai-tax-agent"
 
-# Leave credentials empty here; supply via environment or Secrets Manager
+# Database credentials - leave empty here, set in dev.tfvars only
+db_name     = "tax_agent"
 db_username = ""
 db_password = ""
+
+# Docker image tag to deploy
+image_tag = "latest"
+
+# Set to 0 to stop ECS tasks (no compute cost), 1 to run one task
+ecs_desired_count = 0
+
+# Optional: set to receive CloudWatch alarm email notifications
+alarm_email = ""

@@ -8,13 +8,18 @@ output "environment" {
   value       = var.environment
 }
 
+output "aws_account_id" {
+  description = "AWS account ID"
+  value       = data.aws_caller_identity.current.account_id
+}
+
 output "vpc_id" {
   description = "VPC ID"
   value       = module.networking.vpc_id
 }
 
 output "public_subnet_ids" {
-  description = "Public subnet IDs (ECS tasks run here in dev)"
+  description = "Public subnet IDs"
   value       = module.networking.public_subnet_ids
 }
 
@@ -39,11 +44,31 @@ output "ecs_task_role_arn" {
 }
 
 output "ecr_repository_url" {
-  description = "ECR repository URL - use for docker push and ECS task definition"
+  description = "ECR repository URL for docker push and ECS task definition"
   value       = module.ecr.repository_url
 }
 
-output "aws_account_id" {
-  description = "AWS account ID"
-  value       = data.aws_caller_identity.current.account_id
+output "db_host" {
+  description = "RDS instance hostname"
+  value       = module.rds.db_host
+}
+
+output "db_credentials_secret_arn" {
+  description = "Secrets Manager ARN for DB credentials"
+  value       = module.rds.db_credentials_secret_arn
+}
+
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = module.ecs.cluster_name
+}
+
+output "ecs_service_name" {
+  description = "ECS service name"
+  value       = module.ecs.service_name
+}
+
+output "app_log_group" {
+  description = "CloudWatch log group for application logs"
+  value       = module.cloudwatch.app_log_group_name
 }

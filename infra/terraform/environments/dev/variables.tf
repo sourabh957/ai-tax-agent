@@ -16,17 +16,39 @@ variable "project" {
   default     = "ai-tax-agent"
 }
 
-# Database (values must be supplied via tfvars — never committed)
-variable "db_username" {
+variable "db_name" {
   type        = string
-  description = "RDS database username"
-  default     = ""
-  sensitive   = true
+  description = "PostgreSQL database name"
+  default     = "tax_agent"
+}
+
+variable "db_username" {
+  type      = string
+  sensitive = true
+  default   = ""
 }
 
 variable "db_password" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "image_tag" {
   type        = string
-  description = "RDS database password"
+  description = "Docker image tag to deploy to ECS"
+  default     = "latest"
+}
+
+variable "ecs_desired_count" {
+  type        = number
+  description = "Number of ECS tasks. Set to 0 to stop all tasks (zero compute cost)."
+  default     = 0
+  # Default 0 in dev — increment to 1 when actively testing
+}
+
+variable "alarm_email" {
+  type        = string
+  description = "Email address for CloudWatch alarm notifications. Leave empty to skip."
   default     = ""
-  sensitive   = true
 }
