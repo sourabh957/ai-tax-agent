@@ -81,6 +81,23 @@ def run_checks() -> bool:  # returns True if all required checks pass
             print("[ERROR] BEDROCK_MODEL_ID is required when LLM_PROVIDER=bedrock")
             errors = True
 
+        # Bedrock IAM check (non-billable: credential + model listing only)
+        if settings.aws_region and settings.bedrock_model_id:
+            try:
+                from app.core.bedrock_check import run_bedrock_checks
+                bedrock_results = run_bedrock_checks(
+                    model_id=settings.bedrock_model_id,
+                    region=settings.aws_region,
+                    run_inference_check=False,  # non-billable startup check
+                )
+                for r in bedrock_results:
+                    if r["passed"]:
+                        _status(True, f"Bedrock: {r['name']}", r["detail"])
+                    else:
+                        _warn(f"Bedrock: {r['name']}", r["detail"])
+            except Exception as exc:
+                _warn("Bedrock checks", f"Could not run Bedrock checks: {exc}")
+
     if settings.llm_provider == "openai":
         if settings.llm_api_key:
             _status(True, "OpenAI configuration", "LLM_API_KEY is set")
