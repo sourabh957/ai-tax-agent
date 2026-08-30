@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import health, documents
+from app.api.middleware import RequestIDMiddleware
 from app.core.config import get_settings
 from app.core.config_check import run_checks
 from app.core.logging import configure_logging
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    app.add_middleware(RequestIDMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],  # tightened per-environment in production
