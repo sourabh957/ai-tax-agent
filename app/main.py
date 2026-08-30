@@ -11,7 +11,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, documents
+from app.api.routes import health, documents, usage
 from app.api.middleware import RequestIDMiddleware
 from app.core.config import get_settings
 from app.core.config_check import run_checks
@@ -67,6 +67,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
     app.include_router(documents.router, prefix="/api/v1", tags=["documents"])
+    app.include_router(usage.router, prefix="/api/v1", tags=["usage"])
 
     return app
 

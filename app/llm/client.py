@@ -28,8 +28,11 @@ logger = logging.getLogger(__name__)
 def _build_provider(provider_name: str) -> LLMProvider:
     if provider_name == "bedrock":
         from app.llm.providers.bedrock import BedrockProvider
-
         return BedrockProvider()
+
+    if provider_name == "langchain_bedrock":
+        from app.llm.providers.langchain_bedrock import LangChainBedrockProvider
+        return LangChainBedrockProvider()
 
     # Future providers:
     # if provider_name == "openai":
@@ -38,7 +41,7 @@ def _build_provider(provider_name: str) -> LLMProvider:
 
     raise ValueError(
         f"Unknown LLM_PROVIDER='{provider_name}'. "
-        "Supported values: bedrock. "
+        "Supported values: bedrock, langchain_bedrock. "
         "Add a new provider under app/llm/providers/ to extend."
     )
 
