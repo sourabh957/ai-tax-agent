@@ -11,7 +11,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, documents, usage
+from app.api.routes import health, documents, usage, agent
 from app.api.middleware import RequestIDMiddleware
 from app.core.config import get_settings
 from app.core.config_check import run_checks
@@ -58,16 +58,23 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(RequestIDMiddleware)
+    # CORS — tighten origins in production (see docs/production_config.md)
+    allowed_origins = (
+        ["*"]
+        if settings.app_env != "production"
+        else []  # Set explicit origins via CORS_ALLOWED_ORIGINS env var in prod
+    )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # tightened per-environment in production
-        allow_methods=["*"],
+        allow_origins=allowed_origins,
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
 
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
     app.include_router(documents.router, prefix="/api/v1", tags=["documents"])
     app.include_router(usage.router, prefix="/api/v1", tags=["usage"])
+    app.include_router(agent.router, prefix="/api/v1", tags=["agent"])
 
     return app
 

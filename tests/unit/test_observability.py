@@ -98,11 +98,12 @@ def test_agent_trace_tool_success_rate():
     assert d["tool_success_rate"] == pytest.approx(0.5)
 
 
-def test_tracer_context_manager_emits(caplog):
+@pytest.mark.asyncio
+async def test_tracer_context_manager_emits(caplog):
     import logging
     tracer = Tracer()
     with caplog.at_level(logging.INFO, logger="app.observability"):
-        with tracer.trace(user_id="u1", query="tax question") as trace:
+        async with tracer.trace(user_id="u1", query="tax question") as trace:
             trace.record_llm_call("model", "bedrock", 50, 20, 100)
             trace.record_tool_call("calculate_tax", True, 30)
             trace.finish("completed")
@@ -111,10 +112,11 @@ def test_tracer_context_manager_emits(caplog):
     assert any("request_id" in r.message for r in caplog.records)
 
 
-def test_tracer_sets_failed_on_exception():
+@pytest.mark.asyncio
+async def test_tracer_sets_failed_on_exception():
     tracer = Tracer()
     with pytest.raises(RuntimeError):
-        with tracer.trace(user_id="u1") as trace:
+        async with tracer.trace(user_id="u1") as trace:
             raise RuntimeError("something went wrong")
 
     assert trace.status == "failed"

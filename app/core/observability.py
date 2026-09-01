@@ -32,9 +32,9 @@ import json
 import logging
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Any, Generator
+from typing import Any, AsyncGenerator
 
 logger = logging.getLogger("app.observability")
 
@@ -182,18 +182,18 @@ class AgentTrace:
 class Tracer:
     """Manages AgentTrace lifecycle."""
 
-    @contextmanager
-    def trace(
+    @asynccontextmanager
+    async def trace(
         self,
         request_id: str | None = None,
         user_id: str = "",
         query: str = "",
-    ) -> Generator[AgentTrace, None, None]:
+    ) -> AsyncGenerator[AgentTrace, None]:
         """
-        Context manager that creates a trace, yields it, then emits on exit.
+        Async context manager that creates a trace, yields it, then emits on exit.
 
         Usage:
-            with tracer.trace(request_id=..., user_id=..., query=...) as t:
+            async with tracer.trace(request_id=..., user_id=..., query=...) as t:
                 t.record_llm_call(...)
                 t.record_tool_call(...)
         """
