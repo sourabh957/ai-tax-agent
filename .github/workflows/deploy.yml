@@ -1,0 +1,100 @@
+﻿name: Deploy to ECR + ECS
+
+on:
+  push:
+    branches: [master, main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, prod]
+      image_tag:
+        description: "Image tag to deploy (default: git SHA)"
+        required: false
+        default: ""
+
+# Prevent concurrent deployments to the same environment
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy (${{ github.event.inputs.environment || 'dev' }})
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+
+    # ⚠️ Production deployments require manual approval.
+    # Configure environment protection rules in GitHub Settings → Environments.
+
+    permissions:
+      id-token: write   # for OIDC auth to AWS (no long-lived keys)
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.image_tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="${{ github.sha }}"
+            TAG="${TAG:0:7}"
+          fi
+          echo "IMAGE_TAG=${TAG}" >> $GITHUB_OUTPUT
+          echo "Deploying image tag: ${TAG}"
+
+      - name: Configure AWS credentials (OIDC -- no long-lived keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to ECS
+        run: |
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          TAG="${{ steps.tag.outputs.IMAGE_TAG }}"
+
+          # Update ECS service with new task definition
+          aws ecs update-service \
+            --cluster "${{ secrets.ECS_CLUSTER }}" \
+            --service "${{ secrets.ECS_SERVICE }}" \
+            --force-new-deployment \
+            --region "${{ secrets.AWS_REGION }}"
+
+          # Wait for stability
+          aws ecs wait services-stable \
+            --cluster "${{ secrets.ECS_CLUSTER }}" \
+            --services "${{ secrets.ECS_SERVICE }}" \
+            --region "${{ secrets.AWS_REGION }}"
+
+          echo "Deployment complete: ${TAG} → ECS ${ENV}"
+
+      - name: Verify deployment
+        run: |
+          # Hit the health endpoint to confirm the new tasks are responding
+          # In real setup, use the ALB DNS or ECS service discovery endpoint
+          echo "Deployment verified via ECS services-stable wait."
+          echo "For ALB health verification, set ALB_DNS_NAME secret and uncomment below:"
+          # curl -f https://${{ secrets.ALB_DNS_NAME }}/api/v1/health

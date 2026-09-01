@@ -29,13 +29,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     ok = run_checks()
     if not ok:
-        # Log the failure but do NOT prevent startup — missing optional
-        # services (Qdrant, DB) are acceptable in development.
-        # A hard exit here would break local development that only uses Bedrock.
         logger.warning(
             "Configuration check reported errors. "
             "Some features may be unavailable."
         )
+
+    # Production hardening (only runs when APP_ENV=production)
+    try:
+        from app.core.hardening import run_production_hardening_checks
+        await run_production_hardening_checks(fail_fast=False)
+    except Exception as exc:
+        logger.warning("Production hardening checks failed: %s", exc)
 
     yield
 
