@@ -134,7 +134,8 @@ module "rds" {
 }
 
 # ── EC2 Spot Instance ─────────────────────────────────────────────────────────
-# Replaces ECS/Fargate with a single low-cost public EC2 Spot host.
+# Single public Spot host: Nginx → Docker Compose (api + frontend containers).
+# user_data fetches secrets from Secrets Manager at every boot — no secrets in Terraform.
 
 module "ec2" {
   source = "../../modules/ec2"
@@ -148,12 +149,23 @@ module "ec2" {
   ami_id               = ""
   cloudwatch_log_group = module.cloudwatch.app_log_group_name
 
-  # Placeholder image references. If you keep a single ECR repo, publish
-  # distinct tags such as frontend-latest and api-latest.
+  # Single ECR repo — two tags: api-latest and frontend-latest
   ecr_repository_urls = {
-    frontend = module.ecr.repository_url
     api      = module.ecr.repository_url
+    frontend = module.ecr.repository_url
   }
+
+  # Secrets Manager secret names — resolved at EC2 boot time, NOT baked into the image
+  db_secret_name     = module.secrets.db_credentials_secret_name
+  qdrant_secret_name = module.secrets.qdrant_api_key_secret_name
+
+  # Non-secret runtime config baked into user_data
+  s3_bucket_name    = module.s3.bucket_name
+  bedrock_model_id  = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+  qdrant_url        = ""   # Set to your Qdrant Cloud URL once provisioned
+  qdrant_collection = "tax_rules"
+
+  depends_on = [module.secrets]
 }
 
 # ── Secrets Manager ───────────────────────────────────────────────────────────

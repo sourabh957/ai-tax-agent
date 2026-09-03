@@ -45,6 +45,7 @@ logs/
 crash.log
 .terraform.lock.hcl
 terraform.tfvars
+*.tfvars
 !*.tfvars.example
 override.tf
 override.tf.json

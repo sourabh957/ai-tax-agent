@@ -23,7 +23,7 @@ resource "aws_db_instance" "postgres" {
 
   # Engine
   engine         = "postgres"
-  engine_version = "16.3"
+  engine_version = "16.9"
   instance_class = var.instance_class
 
   # Storage
@@ -69,28 +69,5 @@ resource "aws_db_instance" "postgres" {
 }
 
 # ── Secrets Manager: store DB credentials ────────────────────────────────────
-# The EC2-hosted application reads the DB connection string from Secrets Manager.
-# The actual password value must be set OUTSIDE Terraform to avoid
-# storing secrets in tfstate.
-
-resource "aws_secretsmanager_secret" "db_credentials" {
-  name        = "${local.name_prefix}/db-credentials"
-  description = "RDS PostgreSQL credentials for ${local.name_prefix}"
-
-  # Allow immediate deletion in dev; set recovery window in prod
-  recovery_window_in_days = 0
-
-  tags = {
-    Project     = var.project
-    Environment = var.environment
-  }
-}
-
-# NOTE: We create the secret container here but do NOT set the value in Terraform.
-# Set the secret value manually after apply:
-#
-#   aws secretsmanager put-secret-value \
-#     --secret-id "<project>-<env>/db-credentials" \
-#     --secret-string '{"username":"...","password":"...","host":"...","port":"5432","dbname":"tax_agent"}'
-#
-# This prevents credentials from ever appearing in terraform.tfstate or plan output.
+# NOTE: Secret is now managed by the secrets module to avoid duplication.
+# See: infra/terraform/modules/secrets/main.tf

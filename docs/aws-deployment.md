@@ -1,6 +1,6 @@
-# AWS Deployment Guide
+﻿# AWS Deployment Guide
 
-> **Architecture:** Single EC2 Spot instance · Nginx · Docker · RDS PostgreSQL · S3 · Qdrant Cloud · Bedrock
+> **Architecture:** Single EC2 Spot instance · Nginx · Docker Compose · RDS PostgreSQL · S3 · Qdrant Cloud · Bedrock
 >
 > See also: [aws-cost.md](aws-cost.md) · [domain-and-https.md](domain-and-https.md) · [security.md](security.md)
 
@@ -9,217 +9,247 @@
 ## Architecture overview
 
 ```
-Internet → Custom Domain (DNS) → EC2 Spot (t4g.small)
-                                      │
-                                   Nginx
-                               ┌────┴─────┐
-                               │          │
-                            :3000      :8000
-                           Next.js    FastAPI
-                                         │
-                          ┌──────────────┼──────────────┐
-                          │              │              │
-                       Bedrock       Qdrant Cloud    RDS PostgreSQL
-                        (LLM)       (vectors)        (user data)
-                          └──────────────┘
-                                 S3
-                            (tax documents)
+Internet ──► EC2 Spot t4g.small (Public IP / Custom Domain)
+                  │
+               Nginx :80/:443
+             ┌────┴──────┐
+             ▼           ▼
+          :3000        :8000
+         Next.js      FastAPI
+         (frontend)    (API)
+                         │
+        ┌────────────────┼───────────────┐
+        ▼                ▼               ▼
+    Bedrock          Qdrant Cloud    RDS PostgreSQL
+    (LLM)            (vectors)       (user data)
+                              S3 (tax docs)
+
+ECR: single repo, two image tags
+  <repo>:api-latest        ← FastAPI
+  <repo>:frontend-latest   ← Next.js
+
+Secrets Manager (all resolved at EC2 boot):
+  ai-tax-agent-dev/db-credentials    ← DB URL
+  ai-tax-agent-dev/qdrant-api-key    ← Qdrant key
+  ai-tax-agent-dev/oidc-credentials  ← OIDC secret (optional)
 ```
 
 ---
 
 ## Prerequisites
 
-- AWS account with Bedrock model access enabled
-- AWS CLI configured: `aws configure`
-- Terraform ≥ 1.7 installed
+- AWS account with Bedrock model access enabled for `ap-south-1`
+- AWS CLI configured (`aws configure` or `aws sso login`)
+- Terraform ≥ 1.7: `terraform -version`
 - Docker installed and running
-- A registered domain name (purchase separately)
-- EC2 SSH key pair created
+- An EC2 key pair in `ap-south-1` (needed for SSH; SSM Session Manager works without it)
 
 ---
 
-## Step 1: Create infrastructure (Terraform)
+## Step 1 — Create infrastructure (Terraform)
 
 ```bash
 cd infra/terraform/environments/dev
 
-# Copy and fill in variables
+# First time only
+terraform init
+
+# Review and edit variables
 cp dev.tfvars.example dev.tfvars
 # Edit dev.tfvars:
-#   key_name = "your-ec2-keypair"
-#   domain_name = "yourdomain.com"
-#   db_username = "taxly_user"
-#   db_password = "strong-password-here"
+#   key_name      = "your-ec2-keypair"
+#   db_username   = "taxly_user"
+#   db_password   = "StrongPass123!"   ← never commit this file
+#   alarm_email   = "you@example.com"
 
-# Review what will be created
-terraform init
-terraform fmt -recursive
-terraform validate
+# Validate
+terraform fmt -recursive && terraform validate
+
+# Review what will be created (READ before applying)
 terraform plan -var-file="dev.tfvars"
+```
 
-# ⚠️ Review the plan and estimated costs before applying
-# After review:
+**Resources created and approximate costs (ap-south-1):**
+
+| Resource | Size | Est. cost/month |
+|----------|------|----------------|
+| EC2 Spot t4g.small | 2 vCPU / 2 GB | ~$5–8 |
+| RDS db.t4g.micro | 1 vCPU / 1 GB | ~$12–15 |
+| S3 + ECR storage | < 5 GB | ~$1 |
+| CloudWatch logs (7d) | minimal | ~$1 |
+| **Total** | | **~$20–25/month** |
+
+> ⚠️ Spot instances can be interrupted. RDS data is persistent.
+
+```bash
+# Apply after reviewing the plan
 terraform apply -var-file="dev.tfvars"
 
-# Save outputs
+# Save key outputs
 terraform output
 ```
 
-**Resources created:**
-- VPC + public/private subnets + Internet Gateway
-- Security groups (EC2: 80/443/22; RDS: 5432 from EC2 only)
-- IAM instance profile (Bedrock + S3 + CloudWatch + Secrets Manager)
-- EC2 Spot instance (t4g.small) — auto-bootstrapped via user_data
-- RDS PostgreSQL (db.t4g.micro) — private subnet
-- S3 bucket (encrypted, private)
-- ECR repositories (backend + frontend)
-- CloudWatch log group
-
 ---
 
-## Step 2: Push Docker images to ECR
+## Step 2 — Populate secrets
+
+Terraform creates the secret **containers**. You fill in the values:
 
 ```bash
-# Get ECR URLs from Terraform
-ECR_BACKEND=$(terraform -chdir=infra/terraform/environments/dev output -raw ecr_backend_repository_url)
-ECR_FRONTEND=$(terraform -chdir=infra/terraform/environments/dev output -raw ecr_frontend_repository_url)
-REGION=$(terraform -chdir=infra/terraform/environments/dev output -raw aws_region)
+# Interactive helper (prompts for Qdrant key and OIDC secret)
+./scripts/populate_secrets.sh
 
-# Authenticate Docker to ECR
-aws ecr get-login-password --region $REGION \
-    | docker login --username AWS --password-stdin ${ECR_BACKEND%%/*}
+# Or manually:
+REGION=ap-south-1
 
-# Build and push backend
-docker build -t taxly-backend:latest .
-docker tag taxly-backend:latest $ECR_BACKEND:latest
-docker push $ECR_BACKEND:latest
+# Verify DB credentials (Terraform populates this from dev.tfvars automatically)
+aws secretsmanager get-secret-value \
+    --secret-id ai-tax-agent-dev/db-credentials --region $REGION
 
-# Build and push frontend
-docker build \
-    --build-arg NEXT_PUBLIC_API_BASE_URL=https://yourdomain.com \
-    -t taxly-frontend:latest frontend/
-docker tag taxly-frontend:latest $ECR_FRONTEND:latest
-docker push $ECR_FRONTEND:latest
+# Qdrant Cloud API key
+aws secretsmanager put-secret-value \
+    --secret-id ai-tax-agent-dev/qdrant-api-key --region $REGION \
+    --secret-string '{"api_key":"<your-qdrant-key>","url":"https://xyz.qdrant.io"}'
 
-# Or use the all-in-one deploy script:
-./scripts/deploy.sh v1.0.0
+# OIDC client secret (optional — skip if using JWT dev auth)
+aws secretsmanager put-secret-value \
+    --secret-id ai-tax-agent-dev/oidc-credentials --region $REGION \
+    --secret-string '{"client_secret":"<your-oidc-secret>"}'
 ```
 
 ---
 
-## Step 3: Configure the EC2 instance
+## Step 3 — Build and push Docker images to ECR
 
-SSH into the EC2 instance:
+```bash
+# All-in-one script — builds both images and pushes to ECR
+./scripts/deploy.sh
+
+# Or step-by-step:
+REGION=ap-south-1
+ECR_REPO=$(terraform -chdir=infra/terraform/environments/dev output -raw ecr_repository_url)
+ECR_REGISTRY="${ECR_REPO%%/*}"
+
+aws ecr get-login-password --region $REGION \
+    | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+# API (backend)  — tag: api-latest
+docker build -t taxly-api:build -f Dockerfile .
+docker tag taxly-api:build $ECR_REPO:api-latest
+docker push $ECR_REPO:api-latest
+
+# Frontend — tag: frontend-latest
+EC2_IP=$(terraform -chdir=infra/terraform/environments/dev output -raw ec2_public_ip)
+docker build \
+    --build-arg NEXT_PUBLIC_API_BASE_URL="http://$EC2_IP" \
+    --build-arg NEXT_PUBLIC_APP_NAME="Taxly" \
+    -t taxly-frontend:build frontend/
+docker tag taxly-frontend:build $ECR_REPO:frontend-latest
+docker push $ECR_REPO:frontend-latest
+```
+
+Verify images in ECR:
+```bash
+aws ecr list-images --repository-name ai-tax-agent-dev --region ap-south-1
+```
+
+---
+
+## Step 4 — EC2 boots automatically
+
+The EC2 `user_data` bootstrap script runs on first boot and:
+
+1. Installs Docker, Docker Compose, AWS CLI, Nginx, Python
+2. Writes `/usr/local/bin/taxly-fetch-secrets.sh`
+3. Writes `/opt/taxly/docker-compose.yml`
+4. Enables and starts `taxly-compose.service` (systemd)
+
+The fetch-secrets script (runs before every compose start):
+- Uses IMDSv2 to get the region
+- Calls `aws secretsmanager get-secret-value` via the IAM instance profile
+- Generates a random JWT secret on first boot (`/opt/taxly/.jwt_secret`)
+- ECR-logins Docker and writes `/opt/taxly/.env`
+- Docker Compose reads `.env` and starts api, frontend, nginx containers
+
+**No secrets are ever stored in Terraform state, user_data, or Docker images.**
+
+---
+
+## Step 5 — Run database migrations
+
+After the stack is up:
 
 ```bash
 EC2_IP=$(terraform -chdir=infra/terraform/environments/dev output -raw ec2_public_ip)
-ssh -i ~/.ssh/your-key.pem ec2-user@$EC2_IP
-```
-
-Create the application environment file:
-
-```bash
-sudo mkdir -p /opt/taxly
-sudo cat > /opt/taxly/.env << 'EOF'
-# Copy from your actual values — NEVER commit this file
-AWS_REGION=ap-south-1
-BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
-S3_BUCKET_NAME=your-bucket-name
-QDRANT_URL=https://your-cluster.qdrant.io
-QDRANT_API_KEY=your-qdrant-api-key
-QDRANT_COLLECTION=tax_rules
-DATABASE_URL=postgresql+asyncpg://user:pass@rds-endpoint/taxly
-DOMAIN_NAME=yourdomain.com
-ECR_BACKEND_URI=account.dkr.ecr.region.amazonaws.com/taxly-backend
-ECR_FRONTEND_URI=account.dkr.ecr.region.amazonaws.com/taxly-frontend
-IMAGE_TAG=latest
-CORS_ALLOWED_ORIGINS=https://yourdomain.com
-EOF
-
-# Copy docker-compose.prod.yml to the instance
-scp -i ~/.ssh/your-key.pem docker-compose.prod.yml ec2-user@$EC2_IP:/opt/taxly/
-
-# Start the application
-cd /opt/taxly
-aws ecr get-login-password --region ap-south-1 \
-    | docker login --username AWS --password-stdin account.dkr.ecr.region.amazonaws.com
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
+ssh -i ~/.ssh/your-key.pem ec2-user@$EC2_IP \
+    'sudo docker compose -f /opt/taxly/docker-compose.yml exec api alembic upgrade head'
 ```
 
 ---
 
-## Step 4: Run database migrations
+## Step 6 — Verify deployment
 
 ```bash
-# On EC2
-docker exec taxly-backend alembic upgrade head
-```
+# All-in-one check script
+./scripts/check_deployment.sh
 
----
+# Manual
+EC2_IP=$(terraform -chdir=infra/terraform/environments/dev output -raw ec2_public_ip)
+curl http://$EC2_IP/api/v1/health
+curl http://$EC2_IP/api/v1/ready
+open http://$EC2_IP   # frontend dashboard
 
-## Step 5: Configure DNS and HTTPS
-
-See [domain-and-https.md](domain-and-https.md) for full instructions.
-
-Quick summary:
-1. Point your domain A record to `EC2_IP`
-2. Install Certbot: `sudo snap install certbot --classic`
-3. Configure Nginx: `sudo cp /opt/taxly/nginx.conf /etc/nginx/sites-available/taxly`
-4. Replace `DOMAIN_NAME` in the config
-5. Get certificate: `sudo certbot --nginx -d yourdomain.com`
-6. Reload Nginx: `sudo nginx -s reload`
-
----
-
-## Verify deployment
-
-```bash
-# Health checks
-curl https://yourdomain.com/api/v1/health
-curl https://yourdomain.com/api/v1/ready
-
-# Check containers
-docker compose -f /opt/taxly/docker-compose.prod.yml ps
-
-# Tail logs
-docker logs taxly-backend --follow
-docker logs taxly-frontend --follow
+# Container status (SSH)
+ssh -i ~/.ssh/key.pem ec2-user@$EC2_IP \
+    'sudo docker compose -f /opt/taxly/docker-compose.yml ps'
 
 # CloudWatch logs
-aws logs tail /ec2/taxly-prod --follow --region ap-south-1
+aws logs tail $(terraform -chdir=infra/terraform/environments/dev output -raw app_log_group) \
+    --follow --region ap-south-1
+```
+
+---
+
+## Redeploying after code changes
+
+```bash
+./scripts/deploy.sh          # builds, pushes, restarts
+./scripts/deploy.sh v1.2.0   # with explicit tag
+```
+
+---
+
+## Updating secrets
+
+```bash
+# Re-run the populate script anytime
+./scripts/populate_secrets.sh
+
+# Restart the app to pick up new values
+EC2_IP=$(terraform -chdir=infra/terraform/environments/dev output -raw ec2_public_ip)
+ssh -i ~/.ssh/key.pem ec2-user@$EC2_IP 'sudo systemctl restart taxly-compose'
 ```
 
 ---
 
 ## Recovering from Spot interruption
 
-EC2 Spot instances can be interrupted. Recovery:
-
 ```bash
-# Terraform recreates the instance automatically
-# (Spot replacement or explicit terraform apply)
 cd infra/terraform/environments/dev
-terraform apply -var-file="dev.tfvars"
-
-# New instance bootstraps automatically (Docker, Nginx installed via user_data)
-# Deploy latest images:
-./scripts/deploy.sh latest
-
-# Reconnect to RDS (no data loss — RDS is persistent)
+terraform apply -var-file="dev.tfvars"   # recreates instance with same user_data
+./scripts/deploy.sh                       # push images and restart
 ```
+
+RDS data is persistent — no data loss.
 
 ---
 
-## Migration path (future)
+## DNS and HTTPS (optional)
 
-When traffic grows, migrate to ECS/Fargate:
+See [domain-and-https.md](domain-and-https.md) for full instructions.
 
-```
-Current:    EC2 Spot → Nginx → Docker containers
-Future:     ALB → ECS Fargate → (separate frontend/backend services)
-```
-
-The application is stateless and containerized — migration is possible without data loss.
-See `infra/terraform/modules/ecs/` for the ECS module (already built, not deployed yet).
+Quick summary:
+1. Point your domain A record to the EC2 public IP
+2. SSH to EC2, install Certbot, get certificate
+3. Update nginx config to add TLS server block
+4. Rebuild frontend image with `NEXT_PUBLIC_API_BASE_URL=https://yourdomain.com`

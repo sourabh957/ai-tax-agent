@@ -48,3 +48,39 @@ variable "ami_id" {
   description = "Optional AMI ID override. Leave empty to use the latest Amazon Linux 2023 AMI."
   default     = ""
 }
+
+variable "db_secret_name" {
+  type        = string
+  description = "AWS Secrets Manager secret name for database credentials JSON."
+  default     = ""
+}
+
+variable "qdrant_secret_name" {
+  type        = string
+  description = "AWS Secrets Manager secret name for the Qdrant API key JSON."
+  default     = ""
+}
+
+variable "s3_bucket_name" {
+  type        = string
+  description = "S3 bucket name for tax document uploads."
+  default     = ""
+}
+
+variable "bedrock_model_id" {
+  type        = string
+  description = "Amazon Bedrock model ID used by the API container."
+  default     = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+}
+
+variable "qdrant_url" {
+  type        = string
+  description = "Qdrant cluster URL. Leave empty if not yet provisioned."
+  default     = ""
+}
+
+variable "qdrant_collection" {
+  type        = string
+  description = "Qdrant collection name."
+  default     = "tax_rules"
+}
