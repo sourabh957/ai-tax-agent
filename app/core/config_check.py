@@ -40,6 +40,15 @@ def run_checks() -> bool:  # returns True if all required checks pass
 
     # Application
     _status(True, "Application configuration", f"env={settings.app_env}, log_level={settings.log_level}")
+    _status(
+        True,
+        "CORS configuration",
+        (
+            ", ".join(settings.cors_allowed_origins)
+            if settings.cors_allowed_origins
+            else "no explicit origins configured"
+        ),
+    )
 
     # Database
     if settings.database_url:
@@ -104,6 +113,19 @@ def run_checks() -> bool:  # returns True if all required checks pass
         else:
             print("[ERROR] LLM_API_KEY is required when LLM_PROVIDER=openai")
             errors = True
+
+    # Auth
+    if settings.oidc_issuer_url and (settings.oidc_audience or settings.oidc_client_id):
+        _status(True, "OIDC configuration", "OIDC issuer and client settings are present")
+    elif settings.app_env == "development" and settings.jwt_secret_key_value:
+        _status(True, "JWT fallback", "JWT_SECRET_KEY is set for development")
+    else:
+        _warn("Authentication", "OIDC is not configured; development requests may run anonymously")
+
+    if settings.domain_name:
+        _status(True, "Domain configuration", "DOMAIN_NAME is set")
+    else:
+        _warn("Domain configuration", "DOMAIN_NAME is not set")
 
     # Agent limits
     _status(

@@ -66,6 +66,8 @@ def check_required_env_vars_for_production() -> tuple[bool, list[str]]:
         "BEDROCK_MODEL_ID": settings.bedrock_model_id,
         "AWS_REGION": settings.aws_region,
         "S3_BUCKET_NAME": settings.s3_bucket_name,
+        "CORS_ALLOWED_ORIGINS": ",".join(settings.cors_allowed_origins),
+        "DOMAIN_NAME": settings.domain_name,
     }
 
     missing = [k for k, v in required.items() if not v]
@@ -213,5 +215,11 @@ async def run_production_hardening_checks(fail_fast: bool = False) -> bool:
         logger.info("Production hardening [OK]: %s", msg)
     else:
         logger.warning("Production hardening [WARN]: %s", msg)
+
+    if not settings.oidc_issuer_url:
+        logger.warning(
+            "Production hardening [WARN]: OIDC_ISSUER_URL is not configured. "
+            "Bearer token validation will be unavailable."
+        )
 
     return all_passed

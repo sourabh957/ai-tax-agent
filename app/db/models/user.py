@@ -26,6 +26,9 @@ class User(Base, TimestampMixin):
     agent_runs: Mapped[list["AgentRun"]] = relationship(  # noqa: F821
         "AgentRun", back_populates="user", lazy="select"
     )
+    conversations: Mapped[list["Conversation"]] = relationship(  # noqa: F821
+        "Conversation", back_populates="user", lazy="selectin"
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email}>"

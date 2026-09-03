@@ -8,11 +8,11 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, documents, usage, agent
 from app.api.middleware import RequestIDMiddleware
+from app.api.routes import agent, conversations, documents, financial_years, health, usage
 from app.core.config import get_settings
 from app.core.config_check import run_checks
 from app.core.logging import configure_logging
@@ -25,7 +25,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_logging(settings.log_level)
 
     logger = logging.getLogger("app.startup")
-    logger.info("Starting AI Tax Agent [env=%s]", settings.app_env)
+    logger.info(
+        "Starting AI Tax Agent [version=%s env=%s llm_provider=%s]",
+        app.version,
+        settings.app_env,
+        settings.llm_provider or "unconfigured",
+    )
 
     ok = run_checks()
     if not ok:
@@ -34,9 +39,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "Some features may be unavailable."
         )
 
-    # Production hardening (only runs when APP_ENV=production)
     try:
         from app.core.hardening import run_production_hardening_checks
+
         await run_production_hardening_checks(fail_fast=False)
     except Exception as exc:
         logger.warning("Production hardening checks failed: %s", exc)
@@ -48,6 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    app_version = "0.1.0"
 
     app = FastAPI(
         title="AI Tax Agent",
@@ -55,30 +61,37 @@ def create_app() -> FastAPI:
             "Production AI Tax Agent — LLM reasoning + RAG + "
             "deterministic tax engine on AWS."
         ),
-        version="0.1.0",
+        version=app_version,
         docs_url="/docs" if settings.app_env != "production" else None,
         redoc_url="/redoc" if settings.app_env != "production" else None,
         lifespan=lifespan,
     )
 
     app.add_middleware(RequestIDMiddleware)
-    # CORS — tighten origins in production (see docs/production_config.md)
-    allowed_origins = (
-        ["*"]
-        if settings.app_env != "production"
-        else []  # Set explicit origins via CORS_ALLOWED_ORIGINS env var in prod
+
+    allowed_origins = settings.cors_allowed_origins or (
+        ["http://localhost:3000"] if settings.app_env == "development" else []
     )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
-        allow_methods=["GET", "POST"],
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def add_app_version_header(request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers["X-App-Version"] = app.version
+        return response
 
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
     app.include_router(documents.router, prefix="/api/v1", tags=["documents"])
     app.include_router(usage.router, prefix="/api/v1", tags=["usage"])
     app.include_router(agent.router, prefix="/api/v1", tags=["agent"])
+    app.include_router(conversations.router, prefix="/api/v1", tags=["conversations"])
+    app.include_router(financial_years.router, prefix="/api/v1", tags=["financial-years"])
 
     return app
 
