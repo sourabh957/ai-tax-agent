@@ -1,7 +1,7 @@
 variable "instance_type" {
   type        = string
   description = "EC2 Spot instance type for the application host."
-  default     = "t4g.small"
+  default     = "t3.small"
 }
 
 variable "key_name" {

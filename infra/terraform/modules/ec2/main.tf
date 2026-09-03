@@ -6,7 +6,14 @@ locals {
   # URL format: <account>.dkr.ecr.<region>.amazonaws.com/<repo-name>
   ecr_registry  = length(local.api_repository_url) > 0 ? split("/", local.api_repository_url)[0] : ""
   ecr_repo_name = length(local.api_repository_url) > 0 ? reverse(split("/", local.api_repository_url))[0] : ""
-  default_ami_ssm_param = startswith(var.instance_type, "t4g") ? (
+  # Select the correct AMI for the instance family's architecture.
+  # t4g/m7g/c7g = ARM64 (Graviton); everything else = x86_64.
+  default_ami_ssm_param = (
+    startswith(var.instance_type, "t4g") ||
+    startswith(var.instance_type, "m7g") ||
+    startswith(var.instance_type, "c7g") ||
+    startswith(var.instance_type, "r8g")
+  ) ? (
     "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64"
   ) : "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
@@ -63,20 +70,25 @@ resource "aws_instance" "spot" {
 
     # ── 1. Install packages ────────────────────────────────────────────────────
     if command -v dnf >/dev/null 2>&1; then
-      dnf update -y
-      dnf install -y docker docker-compose-plugin awscli curl nginx python3 openssl
+      # AL2023 has curl-minimal by default; --allowerasing replaces it with full curl
+      dnf install -y --allowerasing docker awscli curl nginx python3 openssl
+      # docker-compose-plugin is not in AL2023 default repos — install from GitHub
+      COMPOSE_ARCH=$(uname -m)
+      mkdir -p /usr/local/lib/docker/cli-plugins
+      curl -SL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-$${COMPOSE_ARCH}" \
+        -o /usr/local/lib/docker/cli-plugins/docker-compose
+      chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
       systemctl enable --now docker
-      systemctl disable --now nginx || true
     elif command -v yum >/dev/null 2>&1; then
       yum update -y
       amazon-linux-extras install docker -y || true
       yum install -y docker awscli curl nginx python3 openssl
+      COMPOSE_ARCH=$(uname -m)
       mkdir -p /usr/local/lib/docker/cli-plugins
-      curl -SL https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-$(uname -m) \
+      curl -SL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-$${COMPOSE_ARCH}" \
         -o /usr/local/lib/docker/cli-plugins/docker-compose
       chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
       systemctl enable --now docker
-      systemctl disable --now nginx || true
     fi
 
     usermod -aG docker ec2-user || true
@@ -106,11 +118,14 @@ resource "aws_instance" "spot" {
     DB_SECRET_NAME="__DB_SECRET_NAME__"
     DB_JSON=$(fetch_secret_json "$DB_SECRET_NAME")
     DATABASE_URL=$(python3 -c "
-    import json, sys
+    import json
     d = json.loads('''$DB_JSON''')
     url = d.get('database_url') or ''
-    if not url and d.get('host'):
-        url = f\"postgresql+asyncpg://{d['username']}:{d['password']}@{d['host']}:5432/{d['dbname']}\"
+    # Validate — must start with the asyncpg scheme; fall back to building from parts
+    if not url.startswith('postgresql+asyncpg://') and d.get('host'):
+        url = 'postgresql+asyncpg://{username}:{password}@{host}:{port}/{dbname}'.format(
+            username=d['username'], password=d['password'],
+            host=d['host'], port=d.get('port', '5432'), dbname=d['dbname'])
     print(url)
     " 2>/dev/null || echo "")
 
@@ -153,7 +168,7 @@ resource "aws_instance" "spot" {
     MAX_TOOL_CALLS=10
     MAX_LLM_CALLS=6
     DAILY_REQUEST_LIMIT=20
-    CORS_ALLOWED_ORIGINS=http://__DOMAIN_NAME__,https://__DOMAIN_NAME__
+    CORS_ALLOWED_ORIGINS=["http://__DOMAIN_NAME__","https://__DOMAIN_NAME__","http://localhost:3000"]
     DOMAIN_NAME=__DOMAIN_NAME__
     NEXT_PUBLIC_API_BASE_URL=http://__DOMAIN_NAME__
     NEXT_PUBLIC_APP_NAME=Taxly
