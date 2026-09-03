@@ -69,7 +69,7 @@ resource "aws_db_instance" "postgres" {
 }
 
 # ── Secrets Manager: store DB credentials ────────────────────────────────────
-# The ECS task reads the DB connection string from Secrets Manager.
+# The EC2-hosted application reads the DB connection string from Secrets Manager.
 # The actual password value must be set OUTSIDE Terraform to avoid
 # storing secrets in tfstate.
 

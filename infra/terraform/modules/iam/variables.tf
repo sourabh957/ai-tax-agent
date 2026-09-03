@@ -10,7 +10,7 @@ variable "environment" {
 
 variable "s3_bucket_arn" {
   type        = string
-  description = "ARN of the S3 bucket the ECS task role needs access to."
+  description = "ARN of the S3 bucket the application workload needs access to."
   default     = ""
 }
 
@@ -29,6 +29,6 @@ variable "aws_account_id" {
 
 variable "bedrock_model_ids" {
   type        = list(string)
-  description = "Bedrock model IDs the ECS task is allowed to invoke."
+  description = "Bedrock model IDs the application workload is allowed to invoke."
   default     = ["anthropic.claude-*", "amazon.titan-embed-*"]
 }

@@ -34,17 +34,28 @@ variable "db_password" {
   default   = ""
 }
 
-variable "image_tag" {
+variable "key_name" {
   type        = string
-  description = "Docker image tag to deploy to ECS"
-  default     = "latest"
+  description = "EC2 key pair name for SSH access. Prefer restricting SSH by CIDR."
+  default     = ""
 }
 
-variable "ecs_desired_count" {
-  type        = number
-  description = "Number of ECS tasks. Set to 0 to stop all tasks (zero compute cost)."
-  default     = 0
-  # Default 0 in dev — increment to 1 when actively testing
+variable "domain_name" {
+  type        = string
+  description = "Public domain routed to the EC2 instance and Nginx reverse proxy."
+  default     = ""
+}
+
+variable "ssh_allowed_cidr" {
+  type        = string
+  description = "CIDR allowed to SSH to the EC2 instance. Restrict this in production."
+  default     = "0.0.0.0/0"
+}
+
+variable "instance_type" {
+  type        = string
+  description = "EC2 Spot instance type for the application host."
+  default     = "t4g.small"
 }
 
 variable "alarm_email" {

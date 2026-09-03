@@ -71,6 +71,8 @@ resource "aws_subnet" "private" {
 
 # ── NAT Gateway (optional, cost-controlled) ───────────────────────────────────
 # Only created when var.create_nat_gateway = true.
+# The EC2 Spot architecture keeps application compute in public subnets, so
+# private-subnet egress is typically unnecessary and this should remain false.
 # Cost: ~$35/month per AZ + data transfer.
 
 resource "aws_eip" "nat" {
@@ -144,63 +146,4 @@ resource "aws_route_table_association" "private" {
   count          = length(aws_subnet.private)
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
-}
-
-# ── Security Groups ───────────────────────────────────────────────────────────
-
-# ECS tasks security group — inbound on 8000 from anywhere (tighten in prod)
-resource "aws_security_group" "ecs_tasks" {
-  name        = "${local.name_prefix}-ecs-tasks-sg"
-  description = "Security group for ECS Fargate tasks"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description = "API port"
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "All outbound (AWS API calls, Bedrock, Qdrant)"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name        = "${local.name_prefix}-ecs-tasks-sg"
-    Project     = var.project
-    Environment = var.environment
-  }
-}
-
-# RDS security group — only accepts connections from ECS tasks
-resource "aws_security_group" "rds" {
-  name        = "${local.name_prefix}-rds-sg"
-  description = "Security group for RDS PostgreSQL — ECS tasks only"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description     = "PostgreSQL from ECS tasks only"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_tasks.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name        = "${local.name_prefix}-rds-sg"
-    Project     = var.project
-    Environment = var.environment
-  }
 }

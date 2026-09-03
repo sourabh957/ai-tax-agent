@@ -23,9 +23,14 @@ output "public_subnet_ids" {
   value       = module.networking.public_subnet_ids
 }
 
-output "ecs_tasks_sg_id" {
-  description = "ECS tasks security group ID"
-  value       = module.networking.ecs_tasks_security_group_id
+output "ec2_sg_id" {
+  description = "EC2 public security group ID"
+  value       = module.security.ec2_sg_id
+}
+
+output "rds_sg_id" {
+  description = "RDS security group ID"
+  value       = module.security.rds_sg_id
 }
 
 output "s3_bucket_name" {
@@ -33,18 +38,8 @@ output "s3_bucket_name" {
   value       = module.s3.bucket_name
 }
 
-output "ecs_execution_role_arn" {
-  description = "ECS execution role ARN"
-  value       = module.iam.ecs_execution_role_arn
-}
-
-output "ecs_task_role_arn" {
-  description = "ECS task role ARN"
-  value       = module.iam.ecs_task_role_arn
-}
-
 output "ecr_repository_url" {
-  description = "ECR repository URL for docker push and ECS task definition"
+  description = "ECR repository URL for docker push and the EC2-hosted containers"
   value       = module.ecr.repository_url
 }
 
@@ -53,22 +48,44 @@ output "db_host" {
   value       = module.rds.db_host
 }
 
-output "db_credentials_secret_arn" {
-  description = "Secrets Manager ARN for DB credentials"
-  value       = module.rds.db_credentials_secret_arn
+output "ec2_public_ip" {
+  description = "Public IP address of the EC2 Spot instance"
+  value       = module.ec2.public_ip
 }
 
-output "ecs_cluster_name" {
-  description = "ECS cluster name"
-  value       = module.ecs.cluster_name
-}
-
-output "ecs_service_name" {
-  description = "ECS service name"
-  value       = module.ecs.service_name
+output "ec2_instance_id" {
+  description = "EC2 Spot instance ID"
+  value       = module.ec2.instance_id
 }
 
 output "app_log_group" {
   description = "CloudWatch log group for application logs"
   value       = module.cloudwatch.app_log_group_name
+}
+
+# ── Secrets Manager outputs (ARNs only — never values) ───────────────────────
+
+output "db_credentials_secret_arn" {
+  description = "Secrets Manager ARN for DB credentials (set value with AWS CLI post-apply)"
+  value       = module.secrets.db_credentials_secret_arn
+}
+
+output "db_credentials_secret_name" {
+  description = "Secrets Manager name for DB credentials"
+  value       = module.secrets.db_credentials_secret_name
+}
+
+output "qdrant_api_key_secret_arn" {
+  description = "Secrets Manager ARN for Qdrant API key (set value with AWS CLI post-apply)"
+  value       = module.secrets.qdrant_api_key_secret_arn
+}
+
+output "oidc_credentials_secret_arn" {
+  description = "Secrets Manager ARN for OIDC client secret (set value with AWS CLI post-apply)"
+  value       = module.secrets.oidc_credentials_secret_arn
+}
+
+output "secrets_read_policy_arn" {
+  description = "IAM policy granting EC2 instance read access to application secrets"
+  value       = module.secrets.secrets_read_policy_arn
 }

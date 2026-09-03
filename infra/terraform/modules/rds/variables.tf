@@ -25,7 +25,7 @@ variable "private_subnet_ids" {
 
 variable "rds_security_group_id" {
   type        = string
-  description = "Security group ID that allows ECS tasks to connect to RDS."
+  description = "Security group ID that allows the EC2 application host to connect to RDS."
 }
 
 variable "db_name" {

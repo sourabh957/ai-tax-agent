@@ -44,8 +44,10 @@ variable "create_nat_gateway" {
     Whether to create a NAT Gateway for private subnet egress.
 
     COST WARNING: Each NAT Gateway costs ~$35/month plus data transfer fees.
-    For development, leave this false and use public subnets for ECS tasks.
-    Only enable for production when private subnets are required.
+    For the EC2 Spot architecture, leave this false and keep the application
+    instance in a public subnet. Private subnets are reserved for RDS only.
+    Only enable this when a future architecture truly requires private-subnet
+    outbound internet access.
   EOT
   default     = false
 }
