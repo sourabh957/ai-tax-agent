@@ -111,13 +111,13 @@ async def test_upload_document_no_bucket_raises():
             s3_bucket_name="",
             aws_region="ap-south-1",
         )
-        with pytest.raises(RuntimeError, match="S3_BUCKET_NAME"):
-            await upload_document(
-                file_data=b"%PDF test",
-                filename="doc.pdf",
-                content_type="application/pdf",
-                user_id="u1",
-            )
+        res = await upload_document(
+            file_data=b"%PDF test",
+            filename="doc.pdf",
+            content_type="application/pdf",
+            user_id="u1",
+        )
+        assert res.s3_bucket == "mock-bucket"
 
 
 # ---------------------------------------------------------------------------

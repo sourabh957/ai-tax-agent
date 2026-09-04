@@ -66,6 +66,12 @@ resource "aws_db_instance" "postgres" {
     Project     = var.project
     Environment = var.environment
   }
+
+  lifecycle {
+    # Ignore instance_class changes to avoid AZ capacity failures when trying to modify
+    # an existing running RDS instance. Change instance_class manually if needed.
+    ignore_changes = [instance_class]
+  }
 }
 
 # ── Secrets Manager: store DB credentials ────────────────────────────────────

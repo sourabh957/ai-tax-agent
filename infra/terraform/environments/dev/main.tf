@@ -142,7 +142,7 @@ module "ec2" {
 
   instance_type        = var.instance_type
   key_name             = var.key_name
-  subnet_id            = module.networking.public_subnet_ids[0]
+  subnet_id            = module.networking.public_subnet_ids[1]  # ap-south-1b — more Spot capacity
   security_group_id    = module.security.ec2_sg_id
   iam_instance_profile = module.iam.ec2_instance_profile_name
   domain_name          = var.domain_name
@@ -209,7 +209,7 @@ resource "aws_launch_template" "app" {
   network_interfaces {
     associate_public_ip_address = true
     security_groups             = [module.security.ec2_sg_id]
-    subnet_id                   = module.networking.public_subnet_ids[0]
+    subnet_id                   = module.networking.public_subnet_ids[1]  # same AZ as EC2
     delete_on_termination       = true
   }
 

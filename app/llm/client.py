@@ -34,6 +34,10 @@ def _build_provider(provider_name: str) -> LLMProvider:
         from app.llm.providers.langchain_bedrock import LangChainBedrockProvider
         return LangChainBedrockProvider()
 
+    if provider_name == "mock":
+        from app.llm.providers.mock import MockProvider
+        return MockProvider()
+
     # Future providers:
     # if provider_name == "openai":
     #     from app.llm.providers.openai import OpenAIProvider

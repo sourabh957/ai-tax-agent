@@ -53,13 +53,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSelectedYear(current);
   }, [financialYears]);
 
-  // Load conversations when year changes
-  useEffect(() => {
-    if (selectedYear) {
-      refreshConversations();
-    }
-  }, [selectedYear]);
-
   const refreshConversations = useCallback(async () => {
     if (!selectedYear) return;
     try {
@@ -69,6 +62,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setConversations([]);
     }
   }, [selectedYear]);
+
+  // Load conversations when year changes
+  useEffect(() => {
+    if (selectedYear) {
+      refreshConversations();
+    }
+  }, [selectedYear, refreshConversations]);
 
   const createConversation = useCallback(async (): Promise<Conversation | null> => {
     if (!selectedYear) return null;

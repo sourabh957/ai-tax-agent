@@ -142,8 +142,8 @@ async def check_s3_accessible() -> tuple[bool, str]:
         from app.core.config import get_settings
 
         settings = get_settings()
-        if not settings.s3_bucket_name:
-            return False, "S3_BUCKET_NAME is not configured."
+        if not settings.s3_bucket_name or settings.s3_bucket_name == "mock-bucket":
+            return False, "S3_BUCKET_NAME is not configured or mock."
 
         client = boto3.client("s3", region_name=settings.aws_region)
         loop = asyncio.get_event_loop()
@@ -152,7 +152,7 @@ async def check_s3_accessible() -> tuple[bool, str]:
             None,
             lambda: client.head_bucket(Bucket=settings.s3_bucket_name),
         )
-        return True, f"S3 bucket '{settings.s3_bucket_name}' accessible"
+        return True, f"Bucket {settings.s3_bucket_name} accessible."
     except Exception as exc:
         return False, f"S3 bucket check failed: {exc}"
 

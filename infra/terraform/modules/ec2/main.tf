@@ -266,6 +266,7 @@ PYEOF
     server {
       listen 80;
       server_name ${local.server_name};
+      client_max_body_size 25M;
 
       location /api/ {
         proxy_pass http://api:8000;

@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     s3_bucket_name: str = Field(default="")
 
     # LLM
-    llm_provider: Literal["bedrock", "openai", "local"] | None = None
+    llm_provider: Literal["bedrock", "openai", "local", "mock"] | None = None
     bedrock_model_id: str = Field(default="")
     llm_api_key: str = Field(default="")
 
