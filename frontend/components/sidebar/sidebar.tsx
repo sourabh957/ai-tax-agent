@@ -1,21 +1,12 @@
-'use client';
+﻿'use client';
 
 import { useApp } from '@/hooks/use-app';
+import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
-import {
-  CalendarDays,
-  ChevronRight,
-  FileText,
-  LogOut,
-  MessageSquare,
-  Plus,
-  Settings,
-  Upload,
-  X,
-} from 'lucide-react';
+import { CalendarDays, LogOut, MessageSquare, Plus, Upload, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { UploadDocumentModal } from '@/components/documents/upload-modal';
-import { Button } from '@/components/ui/button';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -32,7 +23,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     setSelectedConversation,
     createConversation,
   } = useApp();
-
+  const { user, logout } = useAuth();
+  const router = useRouter();
   const [uploadOpen, setUploadOpen] = useState(false);
 
   async function handleNewChat() {
@@ -40,34 +32,43 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     onClose();
   }
 
+  function handleLogout() {
+    logout();
+    router.push('/auth');
+  }
+
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/20 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-20 lg:hidden"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
           onClick={onClose}
         />
       )}
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-30 flex w-64 flex-col bg-white border-r border-slate-200 transition-transform duration-200 ease-in-out lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-30 flex w-64 flex-col transition-transform duration-200 ease-in-out lg:static lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
+        style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border)' }}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-4 h-14 border-b border-slate-100">
+        <div
+          className="flex items-center justify-between px-4 h-14"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">T</span>
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white"
+              style={{ background: 'var(--accent)' }}
+            >
+              T
             </div>
-            <span className="font-semibold text-slate-900">Taxly</span>
+            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Taxly</span>
           </div>
-          <button
-            className="lg:hidden p-1 rounded text-slate-400 hover:text-slate-600"
-            onClick={onClose}
-          >
+          <button className="lg:hidden p-1 rounded" onClick={onClose} style={{ color: 'var(--text-secondary)' }}>
             <X size={16} />
           </button>
         </div>
@@ -75,67 +76,72 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
           {/* Financial Years */}
           <section>
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider px-1 mb-2">
+            <p
+              className="text-xs font-medium uppercase tracking-wider px-1 mb-2"
+              style={{ color: 'var(--text-placeholder)' }}
+            >
               Financial Years
             </p>
             <div className="space-y-0.5">
-              {financialYears.map((fy) => (
-                <button
-                  key={fy.id}
-                  onClick={() => {
-                    setSelectedYear(fy);
-                    setSelectedConversation(null);
-                  }}
-                  className={cn(
-                    'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors',
-                    selectedYear?.id === fy.id
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <CalendarDays size={14} />
-                    <span>{fy.label}</span>
-                  </div>
-                  {fy.is_current && (
-                    <span
-                      className={cn(
-                        'text-xs rounded-full px-1.5 py-0.5',
-                        selectedYear?.id === fy.id
-                          ? 'bg-white/20 text-white'
-                          : 'bg-emerald-50 text-emerald-700'
-                      )}
-                    >
-                      Current
-                    </span>
-                  )}
-                </button>
-              ))}
+              {financialYears.map((fy) => {
+                const active = selectedYear?.id === fy.id;
+                return (
+                  <button
+                    key={fy.id}
+                    onClick={() => { setSelectedYear(fy); setSelectedConversation(null); }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors"
+                    style={{
+                      background: active ? 'var(--accent)' : 'transparent',
+                      color: active ? 'white' : 'var(--text-secondary)',
+                    }}
+                    onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                    onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <CalendarDays size={14} />
+                      <span>{fy.label}</span>
+                    </div>
+                    {fy.is_current && (
+                      <span
+                        className="text-xs rounded-full px-1.5 py-0.5"
+                        style={{
+                          background: active ? 'rgba(255,255,255,0.2)' : 'rgba(52,211,153,0.15)',
+                          color: active ? 'white' : 'var(--success)',
+                        }}
+                      >
+                        Current
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </section>
 
           {selectedYear && (
             <>
-              {/* Divider */}
-              <div className="border-t border-slate-100" />
+              <div style={{ borderTop: '1px solid var(--border)' }} />
 
               {/* Documents */}
               <section>
                 <div className="flex items-center justify-between px-1 mb-2">
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-placeholder)' }}>
                     Documents
                   </p>
-                  <button
-                    onClick={() => setUploadOpen(true)}
-                    className="text-slate-400 hover:text-slate-700 transition-colors"
-                    title="Upload document"
-                  >
+                  <button onClick={() => setUploadOpen(true)} style={{ color: 'var(--text-secondary)' }}>
                     <Plus size={14} />
                   </button>
                 </div>
                 <button
                   onClick={() => setUploadOpen(true)}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50 transition-colors border border-dashed border-slate-200"
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
+                  style={{
+                    color: 'var(--text-secondary)',
+                    border: '1px dashed var(--border)',
+                    background: 'transparent',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <Upload size={13} />
                   <span>Upload document</span>
@@ -145,67 +151,66 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {/* Conversations */}
               <section>
                 <div className="flex items-center justify-between px-1 mb-2">
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-placeholder)' }}>
                     Chats
                   </p>
-                  <button
-                    onClick={handleNewChat}
-                    className="text-slate-400 hover:text-slate-700 transition-colors"
-                    title="New chat"
-                  >
+                  <button onClick={handleNewChat} style={{ color: 'var(--text-secondary)' }}>
                     <Plus size={14} />
                   </button>
                 </div>
-
-                {conversations.length === 0 ? (
+                <div className="space-y-0.5">
                   <button
                     onClick={handleNewChat}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
+                    style={{ color: 'var(--text-secondary)', background: 'transparent' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <MessageSquare size={13} />
+                    <Plus size={13} />
                     <span>New chat</span>
                   </button>
-                ) : (
-                  <div className="space-y-0.5">
-                    <button
-                      onClick={handleNewChat}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50 transition-colors"
-                    >
-                      <Plus size={13} />
-                      <span>New chat</span>
-                    </button>
-                    {conversations.slice(0, 10).map((conv) => (
+                  {conversations.slice(0, 15).map((conv) => {
+                    const active = selectedConversation?.id === conv.id;
+                    return (
                       <button
                         key={conv.id}
-                        onClick={() => {
-                          setSelectedConversation(conv);
-                          onClose();
+                        onClick={() => { setSelectedConversation(conv); onClose(); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors"
+                        style={{
+                          background: active ? 'var(--bg-active)' : 'transparent',
+                          color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
                         }}
-                        className={cn(
-                          'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors group',
-                          selectedConversation?.id === conv.id
-                            ? 'bg-slate-100 text-slate-900'
-                            : 'text-slate-600 hover:bg-slate-50'
-                        )}
+                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
                       >
-                        <MessageSquare size={13} className="shrink-0 text-slate-400" />
+                        <MessageSquare size={13} className="shrink-0" style={{ color: 'var(--text-placeholder)' }} />
                         <span className="truncate">{conv.title || 'New conversation'}</span>
                       </button>
-                    ))}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </section>
             </>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-slate-100 px-3 py-3 space-y-1">
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50 transition-colors">
-            <Settings size={14} />
-            <span>Settings</span>
-          </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50 transition-colors">
+        {/* Footer — user + logout */}
+        <div className="px-3 py-3 space-y-1" style={{ borderTop: '1px solid var(--border)' }}>
+          {user && (
+            <div
+              className="px-3 py-2 rounded-lg text-xs truncate"
+              style={{ color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}
+            >
+              {user.email}
+            </div>
+          )}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
+            style={{ color: 'var(--text-secondary)', background: 'transparent' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
             <LogOut size={14} />
             <span>Sign out</span>
           </button>

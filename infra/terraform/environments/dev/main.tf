@@ -162,10 +162,88 @@ module "ec2" {
   # Non-secret runtime config baked into user_data
   s3_bucket_name    = module.s3.bucket_name
   bedrock_model_id  = "anthropic.claude-3-5-sonnet-20241022-v2:0"
-  qdrant_url        = ""   # Set to your Qdrant Cloud URL once provisioned
+  qdrant_url        = var.qdrant_url
   qdrant_collection = "tax_rules"
+  elastic_ip        = aws_eip.app.public_ip
 
-  depends_on = [module.secrets]
+  depends_on = [module.secrets, aws_eip.app]
+}
+
+# ── Elastic IP — static public address for the application host ───────────────
+# Survives instance replacement (Spot interruption or terraform apply).
+# Association is re-made automatically when a new instance is created.
+
+resource "aws_eip" "app" {
+  domain = "vpc"
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-app-eip"
+    Project     = var.project
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_eip_association" "app" {
+  instance_id   = module.ec2.instance_id
+  allocation_id = aws_eip.app.id
+}
+
+# ── EC2 Launch Template — reusable template for instance recovery ─────────────
+# Captures the full instance config so a new identical instance can be launched
+# in one CLI command if the Spot instance is interrupted or terminated.
+# Usage:  aws ec2 run-instances --launch-template LaunchTemplateId=<id>,Version=$Latest
+#         Then associate the EIP with the new instance ID.
+
+resource "aws_launch_template" "app" {
+  name_prefix   = "${var.project}-${var.environment}-"
+  description   = "Taxly ${var.environment} application host — auto-bootstraps via user_data"
+  image_id      = module.ec2.ami_id
+  instance_type = var.instance_type
+  key_name      = var.key_name != "" ? var.key_name : null
+
+  iam_instance_profile {
+    name = module.iam.ec2_instance_profile_name
+  }
+
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups             = [module.security.ec2_sg_id]
+    subnet_id                   = module.networking.public_subnet_ids[0]
+    delete_on_termination       = true
+  }
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size           = 20
+      volume_type           = "gp3"
+      encrypted             = true
+      delete_on_termination = true
+    }
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name        = "taxly-spot-instance"
+      Project     = var.project
+      Environment = var.environment
+    }
+  }
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-launch-template"
+    Project     = var.project
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
 }
 
 # ── Secrets Manager ───────────────────────────────────────────────────────────

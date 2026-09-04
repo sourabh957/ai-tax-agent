@@ -1,8 +1,35 @@
 @import "tailwindcss";
 
+/* ── Dark-mode colour tokens (forced dark — no light mode) ── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-base:        #0f1117;   /* deepest background */
+  --bg-surface:     #181b23;   /* sidebar, cards */
+  --bg-elevated:    #1e2130;   /* modals, inputs */
+  --bg-hover:       #252a38;   /* hover states */
+  --bg-active:      #2d3347;   /* active/selected */
+
+  --border:         #2a2f3e;   /* subtle borders */
+  --border-strong:  #3a4058;   /* input focus, dividers */
+
+  --text-primary:   #e8eaf0;   /* headings, labels */
+  --text-secondary: #9095a8;   /* muted text */
+  --text-placeholder:#5a6078;  /* placeholders */
+
+  --accent:         #6c7ff2;   /* indigo accent */
+  --accent-hover:   #5a6ee0;
+  --accent-fg:      #ffffff;
+
+  --success:        #34d399;   /* emerald green */
+  --error:          #f87171;   /* red */
+  --warning:        #fbbf24;   /* amber */
+
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+}
+
+/* Always dark — ignore system preference */
+html {
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -12,15 +39,18 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* ── Scrollbar styling ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-placeholder); }
+
+/* ── Selection ── */
+::selection { background: var(--accent); color: white; }

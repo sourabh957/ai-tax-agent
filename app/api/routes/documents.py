@@ -57,6 +57,7 @@ class UploadResponse(BaseModel):
 )
 async def upload_tax_document(
     file: UploadFile,
+    financial_year: str = "2024-25",
     # user_id: str = Depends(get_current_user)  # TODO: add auth in Milestone auth
 ) -> UploadResponse:
     """Upload a document, store in S3, and extract text."""

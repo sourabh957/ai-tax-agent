@@ -1,8 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useApp } from '@/hooks/use-app';
-import { FileText, MessageSquare, Upload } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { MessageSquare, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { UploadDocumentModal } from '@/components/documents/upload-modal';
 
@@ -24,30 +23,37 @@ export function EmptyChat({ onSuggestedQuestion }: EmptyChatProps) {
 
   return (
     <>
-      <div className="flex-1 flex flex-col items-center justify-center min-h-full px-6 py-12 text-center">
-        {/* Icon */}
-        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-          <MessageSquare size={22} className="text-slate-400" />
+      <div
+        className="flex-1 flex flex-col items-center justify-center min-h-full px-6 py-12 text-center"
+        style={{ background: 'var(--bg-base)' }}
+      >
+        <div
+          className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
+          style={{ background: 'var(--bg-elevated)' }}
+        >
+          <MessageSquare size={22} style={{ color: 'var(--accent)' }} />
         </div>
 
-        <h2 className="text-lg font-semibold text-slate-800">
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
           Your {selectedYear?.label} tax workspace
         </h2>
-        <p className="text-sm text-slate-400 mt-2 max-w-xs leading-relaxed">
+        <p className="text-sm mt-2 max-w-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
           Upload your tax documents and ask questions to understand your tax position.
         </p>
 
-        {/* Actions */}
-        <div className="flex gap-3 mt-6">
-          <Button variant="outline" onClick={() => setUploadOpen(true)}>
-            <Upload size={14} />
-            Upload document
-          </Button>
-        </div>
+        <button
+          className="flex items-center gap-2 mt-6 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors"
+          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg-elevated)')}
+          onClick={() => setUploadOpen(true)}
+        >
+          <Upload size={14} />
+          Upload document
+        </button>
 
-        {/* Suggested questions */}
         <div className="mt-8 w-full max-w-sm space-y-2">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-3">
+          <p className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: 'var(--text-placeholder)' }}>
             Suggested questions
           </p>
           <div className="grid gap-2">
@@ -55,7 +61,10 @@ export function EmptyChat({ onSuggestedQuestion }: EmptyChatProps) {
               <button
                 key={q}
                 onClick={() => onSuggestedQuestion(q)}
-                className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                className="w-full text-left px-4 py-3 rounded-xl text-sm transition-colors"
+                style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg-elevated)')}
               >
                 {q}
               </button>

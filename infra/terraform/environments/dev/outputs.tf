@@ -49,8 +49,28 @@ output "db_host" {
 }
 
 output "ec2_public_ip" {
-  description = "Public IP address of the EC2 Spot instance"
+  description = "Public IP address of the EC2 Spot instance (changes on instance replacement)"
   value       = module.ec2.public_ip
+}
+
+output "elastic_ip" {
+  description = "Elastic IP — static public address for the application (does NOT change)"
+  value       = aws_eip.app.public_ip
+}
+
+output "elastic_ip_allocation_id" {
+  description = "Elastic IP allocation ID — needed to re-associate after instance replacement"
+  value       = aws_eip.app.id
+}
+
+output "launch_template_id" {
+  description = "EC2 Launch Template ID for spinning up a replacement instance"
+  value       = aws_launch_template.app.id
+}
+
+output "launch_template_name" {
+  description = "EC2 Launch Template name"
+  value       = aws_launch_template.app.name
 }
 
 output "ec2_instance_id" {

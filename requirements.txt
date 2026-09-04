@@ -33,6 +33,8 @@ httpx>=0.27.0
 tenacity>=8.3.0
 python-multipart>=0.0.9  # file uploads
 python-jose[cryptography]>=3.3.0  # JWT
+passlib[bcrypt]>=1.7.4            # password hashing
+email-validator>=2.0.0         # EmailStr support for auth routes
 sse-starlette>=1.6.0  # SSE streaming
 
 # Observability

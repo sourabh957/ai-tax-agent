@@ -12,7 +12,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.middleware import RequestIDMiddleware
-from app.api.routes import agent, conversations, documents, financial_years, health, usage
+from app.api.routes import agent, auth, conversations, documents, financial_years, health, usage
 from app.core.config import get_settings
 from app.core.config_check import run_checks
 from app.core.logging import configure_logging
@@ -87,6 +87,7 @@ def create_app() -> FastAPI:
         return response
 
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
+    app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
     app.include_router(documents.router, prefix="/api/v1", tags=["documents"])
     app.include_router(usage.router, prefix="/api/v1", tags=["usage"])
     app.include_router(agent.router, prefix="/api/v1", tags=["agent"])

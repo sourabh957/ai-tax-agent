@@ -2,6 +2,8 @@ locals {
   frontend_repository_url = lookup(var.ecr_repository_urls, "frontend", "")
   api_repository_url      = lookup(var.ecr_repository_urls, "api", "")
   server_name             = trimspace(var.domain_name) != "" ? var.domain_name : "_"
+  # For CORS: prefer domain_name, fall back to elastic_ip, fall back to wildcard
+  cors_origin             = trimspace(var.domain_name) != "" ? var.domain_name : (trimspace(var.elastic_ip) != "" ? var.elastic_ip : "*")
   # Derive ECR registry host and repo name from the api URL.
   # URL format: <account>.dkr.ecr.<region>.amazonaws.com/<repo-name>
   ecr_registry  = length(local.api_repository_url) > 0 ? split("/", local.api_repository_url)[0] : ""
@@ -116,27 +118,30 @@ resource "aws_instance" "spot" {
 
     # DB credentials ─────────────────────────────────────────────────────────
     DB_SECRET_NAME="__DB_SECRET_NAME__"
-    DB_JSON=$(fetch_secret_json "$DB_SECRET_NAME")
-    DATABASE_URL=$(python3 -c "
-    import json
-    d = json.loads('''$DB_JSON''')
-    url = d.get('database_url') or ''
-    # Validate — must start with the asyncpg scheme; fall back to building from parts
-    if not url.startswith('postgresql+asyncpg://') and d.get('host'):
-        url = 'postgresql+asyncpg://{username}:{password}@{host}:{port}/{dbname}'.format(
-            username=d['username'], password=d['password'],
-            host=d['host'], port=d.get('port', '5432'), dbname=d['dbname'])
-    print(url)
-    " 2>/dev/null || echo "")
+    DB_SECRET_TMP=$(mktemp)
+    fetch_secret_json "$DB_SECRET_NAME" > "$DB_SECRET_TMP"
+    DATABASE_URL=$(python3 - "$DB_SECRET_TMP" <<'PYEOF'
+import json, sys
+with open(sys.argv[1]) as f: d = json.load(f)
+url = d.get("database_url") or ""
+if not url.startswith("postgresql+asyncpg://") and d.get("host"):
+    url = "postgresql+asyncpg://{u}:{p}@{h}:{port}/{db}".format(u=d["username"],p=d["password"],h=d["host"],port=d.get("port","5432"),db=d["dbname"])
+print(url)
+PYEOF
+) 2>/dev/null || echo ""
+    rm -f "$DB_SECRET_TMP"
 
-    # Qdrant API key ──────────────────────────────────────────────────────────
+    # Qdrant API key
     QDRANT_SECRET_NAME="__QDRANT_SECRET_NAME__"
-    QDRANT_JSON=$(fetch_secret_json "$QDRANT_SECRET_NAME")
-    QDRANT_API_KEY=$(python3 -c "
-    import json, sys
-    d = json.loads('''$QDRANT_JSON''')
-    print(d.get('api_key', ''))
-    " 2>/dev/null || echo "")
+    QDRANT_SECRET_TMP=$(mktemp)
+    fetch_secret_json "$QDRANT_SECRET_NAME" > "$QDRANT_SECRET_TMP"
+    QDRANT_API_KEY=$(python3 - "$QDRANT_SECRET_TMP" <<'PYEOF'
+import json, sys
+with open(sys.argv[1]) as f: d = json.load(f)
+print(d.get("api_key", ""))
+PYEOF
+) 2>/dev/null || echo ""
+    rm -f "$QDRANT_SECRET_TMP"
 
     # JWT secret — generate once, store in a local file so it survives restarts
     JWT_FILE=/opt/taxly/.jwt_secret
@@ -168,9 +173,9 @@ resource "aws_instance" "spot" {
     MAX_TOOL_CALLS=10
     MAX_LLM_CALLS=6
     DAILY_REQUEST_LIMIT=20
-    CORS_ALLOWED_ORIGINS=["http://__DOMAIN_NAME__","https://__DOMAIN_NAME__","http://localhost:3000"]
-    DOMAIN_NAME=__DOMAIN_NAME__
-    NEXT_PUBLIC_API_BASE_URL=http://__DOMAIN_NAME__
+    CORS_ALLOWED_ORIGINS=["http://${local.cors_origin}","https://${local.cors_origin}","http://localhost:3000"]
+    DOMAIN_NAME=${local.cors_origin}
+    NEXT_PUBLIC_API_BASE_URL=http://${local.cors_origin}
     NEXT_PUBLIC_APP_NAME=Taxly
     API_IMAGE=__ECR_REGISTRY__/__REPO_NAME__:api-latest
     FRONTEND_IMAGE=__ECR_REGISTRY__/__REPO_NAME__:frontend-latest

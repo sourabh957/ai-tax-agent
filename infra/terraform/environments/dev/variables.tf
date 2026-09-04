@@ -63,3 +63,9 @@ variable "alarm_email" {
   description = "Email address for CloudWatch alarm notifications. Leave empty to skip."
   default     = ""
 }
+
+variable "qdrant_url" {
+  type        = string
+  description = "Qdrant Cloud cluster URL. Set after provisioning Qdrant Cloud."
+  default     = ""
+}

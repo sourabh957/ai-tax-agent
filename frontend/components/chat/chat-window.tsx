@@ -133,7 +133,10 @@ export function ChatWindow() {
 
   if (!selectedYear) {
     return (
-      <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
+      <div
+        className="flex-1 flex items-center justify-center text-sm"
+        style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)' }}
+      >
         Select a financial year to get started
       </div>
     );
@@ -144,7 +147,7 @@ export function ChatWindow() {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg-base)' }}>
         {isEmpty ? (
           <EmptyChat onSuggestedQuestion={handleSend} />
         ) : (
@@ -159,15 +162,13 @@ export function ChatWindow() {
             )}
 
             {error && (
-              <div className="flex items-start gap-3 text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+              <div
+                className="flex items-start gap-3 rounded-xl px-4 py-3"
+                style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', color: 'var(--error)' }}
+              >
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                <div className="flex-1 text-sm">
-                  <p>{error}</p>
-                </div>
-                <button
-                  onClick={() => setError('')}
-                  className="text-red-400 hover:text-red-600 shrink-0"
-                >
+                <div className="flex-1 text-sm"><p>{error}</p></div>
+                <button onClick={() => setError('')} style={{ color: 'var(--error)', opacity: 0.7 }}>
                   <RefreshCw size={13} />
                 </button>
               </div>

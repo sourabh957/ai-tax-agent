@@ -84,3 +84,9 @@ variable "qdrant_collection" {
   description = "Qdrant collection name."
   default     = "tax_rules"
 }
+
+variable "elastic_ip" {
+  type        = string
+  description = "Elastic IP address — used for CORS when no domain name is set."
+  default     = ""
+}
